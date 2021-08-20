@@ -853,7 +853,281 @@ public class UtilFunctions {
 				  Functional Composition
 ............................................................................................
 
+Function composition looks object composition in java.
 
+What is Function Composition?
+	Functional COmposition is a technique to coimbine multiple functions into a single function which uses combined functionality.
+       Built in java functional interfaces provides an ability to chain the functions
+
+
+Combine two function and get one function.
+
+package com.cts.fp.composition;
+
+import java.util.function.Predicate;
+
+public class SingleFunctionFromTwoFunctions {
+    public static void main(String[] args) {
+        Predicate<String> startsWith = text -> text.startsWith("A");
+        Predicate<String> endsWith = text -> text.endsWith("x");
+
+        //coimbine with && Operator : which is not readable,looks like imperative
+        //Predicate<String> startsWithAndEndsWith = text -> startsWith.test(text) && endsWith.test(text);
+        Predicate<String> startsWithAndEndsWith = startsWith.and(endsWith);
+
+        Predicate<String> composedOR = startsWith.or(startsWithAndEndsWith);
+
+        boolean result = startsWithAndEndsWith.test("A hardworking person must relax");
+        if (result) {
+            System.out.println("Text Starts With A and Ends with e");
+        } else {
+            System.out.println("No Match found");
+
+        }
+        //or
+        String matchFound = composedOR.test("Hello how are you") ? "Match found" : "Match Not Found";
+        System.out.println(matchFound);
+
+
+    }
+}
+............................................................................................
+
+package com.cts.fp.composition;
+
+import java.util.function.Function;
+
+public class FunctionComposeMethod {
+    public static void main(String[] args) {
+        Function<Integer, Integer> multiply = value -> value * 2;
+        Function<Integer, Integer> add = value -> value + 3;
+
+        //compose execute the methods right to left
+        Function<Integer, Integer> addThenMultiply = multiply.compose(add);
+
+        //andThen execute the methods left to right 
+        Function<Integer, Integer> multiplyAndAdd = multiply.andThen(add);
+
+        System.out.println(addThenMultiply.apply(10));
+        System.out.println(multiplyAndAdd.apply(10));
+
+    }
+}
+.............................................................................................
+					Method References
+
+->It is technique to reduce lot of lambda code itself.
+
+method references:
+  ::
+
+Types of method refences:
+
+1.instance method as reference 
+     - this::methodName
+2.static method as reference
+    - ClassName::methodName
+3.constructor as reference.
+    new::constructor
+
+Simple Method Reference:
+
+package com.cts.fp.methodreferences;
+
+@FunctionalInterface
+interface Welcome {
+    void sayWelcome(String message);
+}
+
+package com.cts.fp.methodreferences;
+
+@FunctionalInterface
+interface UpperCase {
+    String convertToUpper(String message);
+}
+
+public class MethodReferences {
+    public static void main(String[] args) {
+        Welcome welcome = null;
+        welcome = name -> System.out.println(name);
+        welcome.sayWelcome("Subramanian");
+        //method reference
+        welcome = System.out::println;
+        welcome.sayWelcome("Subramanian");
+        ////////////////////////////////////////////////////////////////////////
+        UpperCase upperCase = null;
+        upperCase = message -> message.toUpperCase();
+        System.out.println(upperCase.convertToUpper("subramanian"));
+        upperCase = String::toUpperCase;
+        System.out.println(upperCase.convertToUpper("subramanian"));
+
+
+    }
+}
+.............................................................................................
+package com.cts.fp.methodreferences;
+
+
+class MicroTask {
+    public static void startMicroTaskV2() {
+        System.out.println(Thread.currentThread().getName());
+    }
+
+    public void startMicroTask() {
+        System.out.println(Thread.currentThread().getName());
+    }
+}
+
+class Task {
+    //Runnable logic method
+    public void process() {
+        System.out.println(Thread.currentThread().getName());
+    }
+
+    public void startTask() {
+        //Thread creation using multiple ways
+        Thread thread = null;
+        //anonmous class
+        thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println(Thread.currentThread().getName());
+            }
+        });
+        thread.start();
+        //Using Lambda
+        thread = new Thread(() -> System.out.println(Thread.currentThread().getName()));
+        thread.start();
+        //Runnable logic into another method : using lambda
+        thread = new Thread(() -> this.process());
+        thread.start();
+        //Runnable logic into another method : using method Reference
+        thread = new Thread(this::process);
+        thread.start();
+        //Runnable logic into another class as instance method:
+        MicroTask microTask = new MicroTask();
+//        thread = new Thread(() -> microTask.startMicroTask());
+        thread = new Thread(microTask::startMicroTask);
+        thread.start();
+//        thread = new Thread(() -> microTask.startMicroTask());
+        thread = new Thread(MicroTask::startMicroTaskV2);
+        thread.start();
+
+
+    }
+
+}
+
+public class AdvancedMethodReference {
+    public static void main(String[] args) {
+        Task task = new Task();
+        task.startTask();
+    }
+}
+..............................................................................................
+
+package com.cts.fp.methodreferences;
+
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+
+@FunctionalInterface
+interface InventoryProcessor {
+    String process(boolean isStockAvailable);
+}
+
+class Calculator {
+    public static int add(int a, int b) {
+        return a + b;
+    }
+
+    public int subtract(int a, int b) {
+        return a - b;
+    }
+}
+
+class OrderService {
+    public boolean isStockAvailable() {
+        return true;
+    }
+}
+
+class InventoryService {
+
+    public void updateInventor(InventoryProcessor processor) {
+        System.out.println(processor.process(true));
+    }
+}
+
+public class BuiltinFunctionalInterface {
+    public static void main(String[] args) {
+        BiFunction<Integer, Integer, Integer> adder = Calculator::add;
+        System.out.println(adder.apply(10, 10));
+
+        Calculator calculator = new Calculator();
+
+        BiFunction<Integer, Integer, Integer> subtracter = (a, b) -> calculator.subtract(a, b);
+        System.out.println(subtracter.apply(10, 2));
+        BiFunction<Integer, Integer, Integer> subtracterMethodRef = calculator::subtract;
+        System.out.println(subtracterMethodRef.apply(10, 2));
+
+        OrderService orderService = new OrderService();
+        Supplier<Boolean> orderSupplier = null;
+        orderSupplier = () -> orderService.isStockAvailable();
+        System.out.println(orderSupplier.get());
+        orderSupplier = orderService::isStockAvailable;
+        System.out.println(orderSupplier.get());
+
+        InventoryService inventoryService = new InventoryService();
+        inventoryService.updateInventor(res -> {
+            return "Inventory processed" + res;
+        });
+        inventoryService.updateInventor(BuiltinFunctionalInterface::process);
+    }
+    private static String process(boolean res) {
+        return "Inventory processed" + res;
+    }
+}
+..............................................................................................
+				Constructor Method Reference
+...........................................................................................
+
+When you create Object
+  Class Constructor and Interface method signature matches
+
+package com.cts.fp.builtinfun.interfaces;
+
+
+@FunctionalInterface
+interface Greeter {
+    Hello sayHello(String message);
+}
+
+class Hello {
+    private String message;
+
+    public Hello() {
+
+    }
+
+    public Hello(String message) {
+        this.message = message;
+        System.out.println(this.message);
+    }
+
+    public String getMessage() {
+        return message;
+    }
+}
+
+public class ConstructorReferences {
+    public static void main(String[] args) {
+        Greeter hello = Hello::new;
+        hello.sayHello("Hello");
+        // System.out.println();
+    }
+}
+.............................................................................................
 
 
 
