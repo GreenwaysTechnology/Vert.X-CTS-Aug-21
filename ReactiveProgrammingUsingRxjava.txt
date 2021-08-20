@@ -1,0 +1,439 @@
+				   Reactive Programming
+..............................................................................................
+
+What is Reactive Programming ?
+
+it is one of the  Programming Paradigm(way).
+
+Reactive programming is collection of many programming paradigm best parts and principles.
+
+Reactive programming is collection of oo , functional, event driven......principles
+
+ReactiveX is a combination of the best ideas from the Observer pattern, the Iterator pattern, and functional programming.
+..........................................................................................
+				Reactive Programming languages:
+...............................
+
+There is no such separate pl which adopts reactive programming alone.
+
+rather which is eXtended by other languages : 
+
+Reactive programming is just like plugin, which has been pluged in inside languages via libs and frameworks.
+
+
+Libs for java :
+1.Rxjava 1,2,3
+2.Project Reactor.
+3.Mutiny
+
+
+What is Reactive?
+
+  Oxford dictionary defines reactive  as "showing a response to a stimulus"
+
+Showing a response to a stimulus
+...................................
+
+1.1 (Physiology) Showing an immune response to a specific antigen
+
+1.2 (of a disease or illness) caused by a reaction to something: ‘reactive
+depression’
+
+Acting in response to a situation rather than creating or controlling it
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+Reactive Architecture / Software /System
+.........................................
+
+A software showing responses to stimuli(event/actions)
+
+
+Stimuli could be
+● Events, Messages, Requests, Failures, Measures, Availability…
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+          In Reactive systems, Application is controlled by events.
+
+                  Software controls other softwares.
+
+	  In Non Reactive Systems, Applications are controlled by method calls
+
+		How systems interact ?
+			   Object Communication
+
+           Object-A calls method on Object-B , Object-B Returns data to Object A
+				(method calls) 
+
+...........................................................................................     
+History of Reactive Programming:
+
+Reactive Programming introuced by Micro Soft , Inside C#
+
+In java Reactive Programming Implemented by Netflix : Rxjava
+.............................................................................................
+Standards of Reactive Programming:
+.................................
+
+->The Reactive Manifesto:https://www.reactivemanifesto.org/
+
+   It is standard, published to build and ensure that system is fully reactive.
+
+
+Principles of Best Reactive System:
+
+1.Responsive:
+   Reactive Systems should be responsive : Quick/Timely result.
+
+2.Resilient:
+   Any System is subject to fail, You must have failure work around.
+   failures and how to fallback, provides high availability
+
+3.Elastic : scalability
+   In case of load, how to scale application by increasing and decreasing resources(Softwares)
+
+4.Message Driven
+   The Programs sends and receives data via events- event driven.
+
+			Note : Vertx Implments All Principles		
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+				Reactive Streams Spec
+
+This spec talks about data streamming problems and how to solve - to be dicussed later
+............................................................................................
+Core Ideas behind Reactive Programming :
+
+Object:
+  -setters - write
+  -getters - read
+
+getters
+   -single value - scallar values -number,strings,booleans,object
+   -iteralble value(many values) - array , collection-list,map,set
+
+
+Iterations:
+ IEnumerable ,IEnumerator 
+
+IEnumerator 
+   - bridge interface which is used to iterate collection
+
+  Producer                             Consumer/subscriber Caller(requester)
+  moveNext():boolean -------------------->  give me a value /error
+
+Based this we define programming model called "Pull based"
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+how to reduce sql query exection on database engine, how to add query features inside apps via language.
+-Query language-SQL Like language- inside programming language.
+
+
+  			    That is birth of LINQ
+
+It is microsoft "Language-Integrated Query (LINQ)" is the name for a set of technologies based on the integration of query capabilities directly into the C# language.
+
+
+                   // Specify the data source.
+                 int[] scores = new int[] { 97, 92, 81, 60 };
+
+        // Define the query expression.
+      IEnumerable<int> scoreQuery = from score in scores  where score > 80  select score;
+
+                    "select score from scores where score > 80" -SQL Query
+
+
+Reactive Programming added new style of apis based functional programming principles
+
+1.Pure function
+   function never modifies data memory
+2.immutablity
+   create new copy of object every time
+3.function composition
+    chaining functions
+4.Higher order Function
+   function as parameter
+4.declarative programming
+   dont write much code , write less
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Reactive Programming  =  PUSH Based Data Streams(Event Driven Data Streams) + Operators(apis to process the process) + functional Style principles (pure,fp composition,higherorder)
+...........................................................................................
+				  Reactive Implementation
+............................................................................................
+
+Rxjava:
+......
+1.Producer/Publisher Objects
+
+1.Observable
+2.Subject
+3.Single
+4.Maybe
+5.Completeable
+6.Flowable
+
+@Bean,@Component,@Controller,@Service,@Repostory
+
+2.Consumer Objects
+
+1.Observer
+
+
+3.Operators
+  methods
+
+Operators:
+are classified into various category
+-create Stream
+-tranformation
+-filtering
+-coimbing
+-Error handling
+-utility 
+-conditional and boolean
+-mathmetical and aggregate
+-backpressue
+-connectable
+-converter
+....................
+
+4.Scheduler
+rx.schedulers.Schedulers
+..............................................................................................
+
+note:
+
+ If you want to create any objects, you have to use factory apis.
+
+
+Create Publisher and Subscriber, subscribe , push data,error,complete into stream.
+listens for it.
+
+publihser publishs/push data into stream
+when ever data is pushed event is emitted
+when ever event i emitted, subscriber will be notified.
+
+
+Publisher(Observable) sends three events
+
+-data
+-error
+-completed
+
+subscriber need to attach listener functions to listen for corresponding events
+
+-data ----- listener is called - dataListener
+-error----listener is called - errorListener
+-complete ----listener is called --completedListener
+..............................................................................................
+package com.cts.rx.core;
+
+import io.reactivex.rxjava3.core.Observable;
+
+public class FirstStream {
+    public static void main(String[] args) {
+        //Pubublisher
+        Observable<String> stream = Observable.create(observer -> {
+            //push data,error,complete
+            observer.onNext("Hello"); //emit data event ---listener will be notified
+            observer.onNext("Hai");
+           // observer.onError(new RuntimeException("oops!!")); //emit error event
+            observer.onNext("Welcome");
+            observer.onComplete(); //emit complete event
+        });
+
+
+        //create Subscriber and add Listener
+        stream.subscribe(data -> {
+            System.out.println("Event is fired " + data);
+        }, error -> {
+            System.out.println("Error event is fired " + error);
+        }, () -> {
+            System.out.println("stream closed");
+        });
+    }
+}
+..............................................................................................
+How to emit sequence of numbers,strings,objects?
+
+package com.cts.rx.core;
+
+import io.reactivex.rxjava3.core.Observable;
+
+public class NumberSequenceStream {
+    public static void main(String[] args) {
+        //Pubublisher
+        Observable<Integer> stream = Observable.create(observer -> {
+            observer.onNext(1);
+            observer.onNext(2);
+            observer.onNext(3);
+            observer.onNext(4);
+            observer.onNext(5);
+            observer.onNext(6);
+            observer.onNext(7);
+            observer.onNext(8);
+            observer.onNext(9);
+            observer.onNext(10);
+            observer.onComplete();
+        });
+
+
+        //create Subscriber and add Listener
+        stream.subscribe(data -> {
+            System.out.println("Event is fired " + data);
+        }, error -> {
+            System.out.println("Error event is fired " + error);
+        }, () -> {
+            System.out.println("stream closed");
+        });
+    }
+}
+.........
+Just operator makes your code simple
+        Observable<Integer> stream = Observable.just(1,2,3,4,5,6,7,8,9,10);
+        //create Subscriber and add Listener
+        stream.subscribe(data -> {
+            System.out.println("Event is fired " + data);
+        }, error -> {
+            System.out.println("Error event is fired " + error);
+        }, () -> {
+            System.out.println("stream closed");
+        });
+
+I want to emit sequence of numbers from 1 to 100.
+
+Can I use Just operator?
+
+package com.cts.rx.core;
+
+import io.reactivex.rxjava3.core.Observable;
+
+public class SequenceofMoreNumbers {
+    public static void main(String[] args) {
+        Observable<Integer> stream = Observable.range(1, 100);
+        stream.subscribe(data -> {
+            System.out.println("Event is fired " + data);
+        }, error -> {
+            System.out.println("Error event is fired " + error);
+        }, () -> {
+            System.out.println("stream closed");
+        });
+
+    }
+}
+..........................................................................................
+
+How to Send collection Types,arrays,list...
+
+package com.cts.rx.core;
+
+import io.reactivex.rxjava3.core.Observable;
+
+class Employee {
+    private int id;
+    private String name;
+
+    public Employee() {
+    }
+
+    public Employee(int id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Employee{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
+}
+
+public class ArrayOperator {
+    public static void main(String[] args) {
+        Integer[] items = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        Observable<Integer> stream = Observable.fromArray(items);
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+        //Employee Array
+        Employee[] employees = {new Employee(1, "A"), new Employee(2, "B"), new Employee(3, "C")};
+        Observable<Employee> empStream= Observable.fromArray(employees);
+        empStream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+
+    }
+}
+............................................................................................
+
+package com.cts.rx.core;
+
+import io.reactivex.rxjava3.core.Observable;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class ListStream {
+    public static void main(String[] args) {
+        Integer[] items = {1, 2, 3, 4, 5, 6};
+        List<Integer> list = Arrays.asList(items);
+        Observable<Integer> stream = Observable.fromIterable(list);
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+    }
+}
+.............................................................................................
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
