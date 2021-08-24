@@ -1,0 +1,973 @@
+					Vert.x
+..............................................................................................
+			   Non Blocking and Async Programming
+.............................................................................................
+
+File Descriptor:
+
+-It is data structure- having key -value pairs
+-It is created for every process - Per Process 
+
+File Descriptor maps io devices with The application Progams
+
+lets say i have java program runs on jvm.
+
+When ever jvm starts , file descriptor is created and kept for io interaction.
+
+File Descriptor contains two fields
+ ------------------------------------
+ File Descriptor Entries           File Pointer Reference
+     0                                 STDIN    -KEYBOARD Binding
+     1                                 STDOUT   -Monitor Binding
+     2                                 STDERROR -Monitor Binding
+     3                                  ?
+     4                                  ?
+
+
+The first three enteries are created when process bootstraps.
+
+Lets take an eg : i want to read data from the disk file?.
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+public class CopyBytes {
+    public static void main(String[] args) throws IOException {
+
+        FileInputStream in = null;
+        FileOutputStream out = null;
+
+        try {
+            in = new FileInputStream("xanadu.txt");
+            out = new FileOutputStream("outagain.txt");
+            int c;
+
+            while ((c = in.read()) != -1) {
+                out.write(c);
+            }
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+            if (out != null) {
+                out.close();
+            }
+        }
+    }
+}
+
+In this program, when application calls "in.read()"
+    ----------------->JVM invokes system call(api written in c language)------|os keneral
+                      -->It will add an entry into file descriptor table and binds the disk file location
+ 
+  
+File Descriptor contains two fields
+ ------------------------------------
+ File Descriptor Entries           File Pointer Reference
+     0                                 STDIN    -KEYBOARD Binding
+     1                                 STDOUT   -Monitor Binding
+     2                                 STDERROR -Monitor Binding
+     3                                 HD------------->bINDING HARDDRIVE
+     4                                 NETWORK -----|NEC BINDING
+...........................................................................................
+HTTP programing and Thread Model:
+...............................
+
+In 1996, The model was created call "Request Per Thread"
+
+any req comes to web server, web server will create a new thread of executions.
+
+                              1000 REQ = 1000 Threads
+
+What if i have 1million req, will we need 1million threads ?
+              Yes!.
+
+..............................................................................................
+
+C10K Problem:
+.............
+The C10k problem is the problem of optimizing network sockets to handle a large number of clients at the same time.
+
+ 1000 REQ = 1000 Threads - This is problm
+
+ More Req ==Minimum number of Threads
+
+Why? What is problem of Threading:
+
+if i create thread
+ -memory allocation 
+ -managing life cycle of threads
+
+if thread is created , requests kernal for data, if the data not ready.
+
+if data is not ready during that time thread is waiting(blocking)/blocked 
+lets say , thread has created it is waiting for 1ms for data. this 1ms during that thread is useless, can be used by any one.
+
+The cpu, will pause the unused thread for 1ms, if data is ready again it will activate-This process is called context switch.
+............................................................................................
+				Blocking io is default in programming language
+.............................................................................................
+
+C10K problem and its solution:
+
+Every os has blocking api only.
+
+After 2000, First,Linux introduced a new api called non blocking io api - "select"
+
+1st Implementation:
+
+ select  + read 
+
+select will add entry , returns control back to process
+read will be fired to read data once it is ready in the keneral
+
+.......
+
+2nd implemenation
+
+Poll => select + read on implemenation
+..........................................................................................
+				    EPoll
+..........................................................................................
+	
+What is epoll?
+
+ epoll is kernal io notification framwork developed based on select,poll drawbacks.
+
+Who implemented this epoll binding in the application?
+
+-NGINX  - first Non blocking web server.
+-2008, Node.js was created based on this arch.
+.............................................................................................
+Epoll is just for linux?
+
+What about windows,mac,other os?
+
+-IOCP - Win
+-KQUEUE-MAC
+.............................................................................................
+				Vertx Inspired from Node.js
+............................................................................................
+
+In node there is only one event loop thread, who process events from kernal.
+
+Vertx added more threads to process events.
+
+Vertx implements c10K problem solution on JVM
+   -Limited threads but max concurrency
+   -Non blocking io apis 
+
+Vertx by default maintains threads based Number of cup cores
+
+i have 12 core, each core -2 threads
+ 
+ 12*2 = 24 threads
+
+                   24 threads now can handle XXXX no  Requests
+...........................................................................................
+			   Vertx Core Concepts
+		Vertx helps to build 100% scalable non blocking + reactive applications
+..............................................................................................
+
+Reactive - Data Streaming
+Nonblocking/Async -  Thread Management and processing events
+..............................................................................................
+
+Lets Code:
+
+1.Vertx Instance -Vertx Engine
+2.Verticals 
+3.Event Bus
+..............................................&&&&&&&&&&&&&&&&&.............................
+
+
+How to setup vertx project
+
+vertx supports
+
+1.maven
+2.gradle
+
+project can be simple 
+
+1.normal java project
+2.standard mvn project
+3.vertx project from https://start.vertx.io/
+
+
+
+io.vertx.core.Vertx:
+
+-Vertx represents Vertx Engine- Runtime for Vertx Application.
+
+package com.cts.vertx;
+
+import io.vertx.core.Vertx;
+
+public class HelloVertx {
+    public static void main(String[] args) {
+        // Create Vertx Engine
+        Vertx vertxEngine = Vertx.vertx();
+        //How to create simple non blocking webserver
+        vertxEngine.createHttpServer().requestHandler(req -> {
+            req.response().end("Hello Vertx");
+        }).listen(8080);
+
+    }
+}
+
+..............................................................................................
+Setup project using
+
+https://start.vertx.io/
+
+.............................................................................................
+
+How to run vertx apps?
+
+
+Ways:
+
+1.via main method
+
+package com.cts.vertx;
+
+import io.vertx.core.Vertx;
+
+public class HelloVertx {
+    public static void main(String[] args) {
+        // Create Vertx Engine
+        Vertx vertxEngine = Vertx.vertx();
+        //How to create simple non blocking webserver
+        vertxEngine.createHttpServer().requestHandler(req -> {
+            req.response().end("Hello Vertx");
+        }).listen(8080);
+
+    }
+}
+
+2.via Vertx lanucher
+
+main class and method provided by vertx 
+
+pom.xml
+<main.verticle>com.cts.vertx.MainVerticle</main.verticle>
+<launcher.class>io.vertx.core.Launcher</launcher.class>
+
+
+io.vertx.core.Launcher;
+
+A main() class that can be used to create Vert.x instance and deploy a verticle, or run a bare Vert.x instance.
+
+This class is used by the vertx command line utility to deploy verticles from the command line. It is extensible as "commands" can be added using the CommandFactory SPI.
+
+mvn compile exec:java
+
+
+3.via vertx command line utility.
+  -vertx 4 has removed external command line tools.
+
+4.via java jar model
+
+-fat jar / uber jar :
+  -embeded application
+ appcode + server code
+
+mvn clean package
+ 
+java -jar target/starter-vertx-1.0.0-SNAPSHOT-fat.jar
+
+5.Dev work flow..
+..............................................................................................
+
+Vertx-Modules:
+core
+web
+reactive
+microservices
+data
+messaging
+............
+
+vertx-core:
+
+-Verticles
+-Event loop Threads
+-Callback based programming
+					
+
+Verticle:
+  -It is java object
+  -It can be deployed and undeployed on vertx instance (engine).
+  -It is based on design pattern called "Actor-like Model" - based on akka frameworks
+  -Verticles are bound to "Event loop" , are processed by event loop threads.
+
+Verticle is interface which provides life cycle methods 
+  -init
+  -start - called when verticle during deployment
+  -stop  - called when verticles during undeployment
+
+		
+
+How to use Verticle?
+
+ AbstractVerticle is base class for creating our own verticles.
+
+
+eg:
+ if you are going to implement servlet , 
+
+public class MyServlet extends HttpServlet{
+
+  init  
+  doGet
+  doPost
+  destroy
+}
+
+package com.cts.vertx;
+
+import io.vertx.core.AbstractVerticle;
+
+public class HelloWorldVerticle extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+      super.start();
+      //is called when verticle is being deployed
+    System.out.println("Hello world verticle is deployed");
+  }
+
+  @Override
+  public void stop() throws Exception {
+    super.stop();
+    System.out.println("Hello world verticle is undeployed");
+  }
+}
+
+
+
+How to deploy(run) the above code?
+
+if you want to run any code, you need entry point-main method.
+
+vertx provides entry method-main method called "Launcher"
+
+Launcher is a program, which has built in main method.
+
+In general , lanucher is "vertx" runtime command only
+
+
+in pom.xml we have lanucher configuration.
+
+  <properties>
+    <main.verticle>com.cts.vertx.HelloWorldVerticle</main.verticle>
+  </properties>
+
+
+   <manifestEntries>
+           <Main-Class>io.vertx.core.Launcher</Main-Class>
+           <Main-Verticle>${main.verticle}</Main-Verticle>
+    </manifestEntries>
+............................................................................................
+
+Verticle Deployment via coding:
+...............................
+
+In vertx , verticle deployment itself is async, which is non blocking.
+
+Runner class ; it is utility class provided by vertx for deployment, it is very usefull for dev.
+
+
+How to use Verticle?
+
+ AbstractVerticle is base class for creating our own verticles.
+
+
+eg:
+ if you are going to implement servlet , 
+
+public class MyServlet extends HttpServlet{
+
+  init  
+  doGet
+  doPost
+  destroy
+}
+
+Use : Runner class from Verx team
+
+package com.cts.vertx.deployer;
+
+import com.cts.vertx.HelloWorldVerticle;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.example.util.Runner;
+
+public class DeployVerticleV2 extends AbstractVerticle {
+
+  public static void main(String[] args) {
+    //Utiltity class.
+    Runner.runExample(DeployVerticleV2.class);
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    //Vertx vertx = Vertx.vertx();
+    //via code
+    vertx.deployVerticle(new HelloWorldVerticle());
+  }
+}
+.............................................................................................
+				Non Blocking Applications
+..............................................................................................
+
+Patterns for writting non blockings apps
+
+1.callback style -  traditional
+2.reactive style -  streaming
+
+Non blocking apis
+1.timer
+2.http
+3.fs
+
+Callback Style
+
+1.Future
+2.Promise
+
+Future:
+io.vertx.core.Future
+
+Vertx uses futures to reprsent "Asynchronous" Results
+
+Future is like transport object to transport data between caller and callee in async manner.
+
+ Caller----Future--------Callee
+
+What type of data Future can carry.
+
+ - Success---- |
+		--- >Future
+ - Failure---- |
+
+AsyncResult<T> :
+   Object which has either success data or failure data.
+   Used in caller side to capture data which was sent by Callee
+..............................................................................................
+
+Use case 1 : How to Return Success Data , how to read.
+
+  public Future<String> createSuccessFuture() {
+    //Create Future Object
+    return Future.future(handler -> {
+      handler.complete("Hello!");
+    });
+  }
+
+//    createSuccessFuture().onComplete(new Handler<AsyncResult<String>>() {
+//      @Override
+//      public void handle(AsyncResult<String> event) {
+//        if (event.succeeded()) {
+//            //Grab result
+//          System.out.println(event.result());
+//        } else {
+//
+//        }
+//      }
+//    });
+
+    createSuccessFuture().onComplete(event -> {
+      if (event.succeeded()) {
+        //Grab result
+        System.out.println(event.result());
+      } else {
+        System.out.println(event.cause());
+      }
+    });
+    //The above code can be reduced
+    createSuccessFuture().onSuccess(response -> {
+      System.out.println(response);
+    });
+    createSuccessFuture().onSuccess(System.out::println);
+..............................................................................................
+
+How to send failure data?
+
+  public Future<String> createFailureFuture() {
+    //Create Future Object
+    return Future.future(handler -> {
+      handler.fail("Something Went Wrong");
+    });
+  }
+createFailureFuture().onComplete(event -> {
+      if (event.failed()) {
+        System.out.println(event.cause());
+      }
+    });
+    createFailureFuture().onFailure(System.out::println);
+
+......................................................................................
+
+How to send Success and Failure based on biz logic?
+
+public Future<String> login(String username, String password) {
+    if (username.equals("admin") && password.equals("admin")) {
+      return Future.future(handler -> {
+        handler.complete("Login success");
+      });
+    }
+    return Future.future(handler -> {
+      handler.fail("Login failed");
+    });
+
+  }
+
+
+  login("admin", "admin").onComplete(event -> {
+      if (event.succeeded()) {
+        System.out.println(event.result());
+      } else {
+        System.out.println(event.cause());
+      }
+    });
+
+    login("admin", "admin")
+      .onSuccess(System.out::println)
+      .onFailure(System.out::println);
+
+..............................................................................................
+				Callback Chaining
+			        Nested Callbacks
+.............................................................................................
+
+Legacy Application flow : object oriented and sync flow
+  
+dependent operations  , should happen one by one
+
+Object oriented seq work flow /Sync work flow
+
+ 1.connect db - connect()
+ 2.Query results -queryResult()
+ 3.Formate results -formateResult()
+ 4.add results into http response stream - write()
+ 5.send/flush the results to clients - send()
+
+ Connection con=DriverManager.getConnection("connectionstring");
+ QueryResult queryres=con.queryResult()
+ List<T> results = formatResult(queryres)
+ response.write(results)
+ reponse.end();
+...........................................................................................
+How the above task can be done in functional programming ; vertx?
+
+
+Functional sequential workflow:
+
+ Nested Callback : Callback chaining: functional style
+
+  Handler function is called as callback function
+
+"The out put of one callback is input to the another callback : nested callbacks
+
+   cb1
+     --cb2
+         -cb3
+            --cbN
+              --process the result.
+
+
+
+Use case :
+
+ getUser ----|if data is available
+			|	|
+			|
+			      	 call login method with  output of getUser
+                        |
+		     if not
+			 -error
+
+Note : output of one function will be input to another function.
+
+.............................................................................................
+
+package com.cts.vertx.future;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+public class CallbackNestingVerticle extends AbstractVerticle {
+
+  //getUser
+  public Future<String> getUser() {
+    System.out.println("GetUser is called");
+    String userName = "admin";
+    if (userName != null) {
+      return Future.succeededFuture(userName);
+    }
+    return Future.failedFuture("User not Found");
+  }
+
+  //login
+  public Future<String> login(String userName) {
+    System.out.println("Login is called");
+    if (userName.equals("admin")) {
+      return Future.succeededFuture("Login successFull");
+    }
+    return Future.failedFuture("Login Failed");
+  }
+
+  //showpage
+  public Future<String> showpage(String status) {
+    System.out.println("showPage is called");
+    if (status.equals("Login successFull")) {
+      return Future.succeededFuture("You are Admin");
+    }
+    return Future.failedFuture("You are guest");
+  }
+
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    getUser().onComplete(event -> {
+      if (event.succeeded()) {
+        login(event.result()).onComplete(loginEvent -> {
+          if (loginEvent.succeeded()) {
+            System.out.println(loginEvent.result());
+            //call show page
+            showpage(loginEvent.result()).onComplete(pageEvent -> {
+              if (pageEvent.succeeded()) {
+                System.out.println(pageEvent.result());
+              } else {
+                System.out.println(pageEvent.cause());
+              }
+            });
+          } else {
+            System.out.println(loginEvent.cause());
+          }
+        });
+      } else {
+        System.out.println(event.cause());
+      }
+    });
+
+  }
+}
+package com.cts.vertx.future;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.example.util.Runner;
+
+public class CallbackNestingDeployer extends AbstractVerticle {
+  public static void main(String[] args) {
+    Runner.runExample(CallbackNestingDeployer.class);
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    vertx.deployVerticle(new CallbackNestingVerticle());
+  }
+}
+.............................................................................................
+			   Callback Hell
+..............................................................................................
+
+getUser().onComplete(event -> {
+      if (event.succeeded()) {
+        login(event.result()).onComplete(loginEvent -> {
+          if (loginEvent.succeeded()) {
+            System.out.println(loginEvent.result());
+            //call show page
+            showpage(loginEvent.result()).onComplete(pageEvent -> {
+              if (pageEvent.succeeded()) {
+                System.out.println(pageEvent.result());
+              } else {
+                System.out.println(pageEvent.cause());
+              }
+            });
+          } else {
+            System.out.println(loginEvent.cause());
+          }
+        });
+      } else {
+        System.out.println(event.cause());
+      }
+    });
+
+
+Look at the above code , ask your self
+
+1.is it easy to understand?
+2.is it easy to scale
+3.is it easy to maintain
+
+No!
+
+This is called callback hell; The callback hell is way of writing complex callbacks.
+
+can we escape from callback hell problem, how to write better callback based programming?
+
+Yes! 
+............................................................................................
+					Solution is 
+					Future.compose Method
+.............................................................................................
+
+
+package com.cts.vertx.future;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+public class CallbackNestingVerticle extends AbstractVerticle {
+
+  //getUser
+  public Future<String> getUser() {
+    System.out.println("GetUser is called");
+    String userName = "admin";
+    if (userName != null) {
+      return Future.succeededFuture(userName);
+    }
+    return Future.failedFuture("User not Found");
+  }
+
+  //login
+  public Future<String> login(String userName) {
+    System.out.println("Login is called");
+    if (userName.equals("admin")) {
+      return Future.succeededFuture("Login successFull"); //trigger event
+    }
+    return Future.failedFuture("Login Failed");
+  }
+
+  //showpage
+  public Future<String> showpage(String status) {
+    System.out.println("showPage is called");
+    if (status.equals("Login successFull")) {
+      return Future.succeededFuture("You are Admin");
+    }
+    return Future.failedFuture("You are guest");
+  }
+
+  public void callbackHell() {
+    getUser().onComplete(event -> {
+      if (event.succeeded()) {
+        login(event.result()).onComplete(loginEvent -> {
+          if (loginEvent.succeeded()) {
+            System.out.println(loginEvent.result());
+            //call show page
+            showpage(loginEvent.result()).onComplete(pageEvent -> {
+              if (pageEvent.succeeded()) {
+                System.out.println(pageEvent.result());
+              } else {
+                System.out.println(pageEvent.cause());
+              }
+            });
+          } else {
+            System.out.println(loginEvent.cause());
+          }
+        });
+      } else {
+        System.out.println(event.cause());
+      }
+    });
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    //callbackHell();
+    //compose ; based on function composition.
+    getUser().compose(user -> {
+        return login(user); //return Future
+      })
+      .compose(status -> {
+        return showpage(status); //return Future
+      })
+      .onSuccess(System.out::println)
+      .onFailure(System.out::println);
+    //"hello".trim().toUpperCase().startsWith("")
+
+    //code refactoring
+    getUser().compose(user -> login(user))
+      .compose(status -> showpage(status))
+      .onSuccess(System.out::println)
+      .onFailure(System.out::println);
+    //method reference
+    getUser()
+      .compose(this::login)
+      .compose(this::showpage)
+      .onSuccess(System.out::println)
+      .onFailure(System.out::println);
+  }
+}
+.............................................................................................
+				Advanced Composition
+.............................................................................................
+
+i have three methods
+
+-startDbServer
+-startHttpServer
+-startConfigServer
+
+After success of all methods only i have to initalize my app, if any one of the server failed
+i have to throw error and stop .
+
+Future Coordination:
+ Coordination of mutliple futures can be accieved with Vertx futures.
+
+Supports concurrent composition(run serveral async operations in paralle) and sequential composition -chain async operations.
+
+CompositeFuture.all(f1,f2,f3,f4,f5,f6)
+
+-all composition waits until all futures are successful or any one fails.
+
+CompositeFuture.any(f1,f2,f3,f4,f5,f6)
+    any composition waits for the succeeded future.
+
+package com.cts.vertx.future;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.example.util.Runner;
+
+public class CompositFutureVerticle extends AbstractVerticle {
+
+  public static void main(String[] args) {
+    Runner.runExample(CompositFutureVerticle.class);
+  }
+
+  public Future<String> startDbServer() {
+    System.out.println("Db Server Started");
+    return Future.succeededFuture("Db server is up");
+  }
+
+  public Future<String> startWebServer() {
+    System.out.println("WebServer Server Started");
+    //  return Future.succeededFuture("Web server is up");
+    return Future.failedFuture("Port is already In Use");
+  }
+
+  public Future<String> startConfigServer() {
+    System.out.println("Config Server Started");
+    return Future.succeededFuture("Config Server is up");
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+
+    Future<String> dbServer = startDbServer();
+    Future<String> webServer = startWebServer();
+    Future<String> configServer = startConfigServer();
+    //coordinate all servers; make sure every server is ready.
+    CompositeFuture.all(dbServer, webServer, configServer).onComplete(ar -> {
+      if (ar.succeeded()) {
+        System.out.println("All Server is Up");
+      } else {
+        System.out.println(ar.cause());
+      }
+    });
+
+  }
+}
+.............................................................................................
+			  compose vs ComositeFuture.all/any
+
+compose is sequencial
+compositeFuture is parallel
+..............................................................................................				 Passing function as parameter-Higher Order function
+............................................................................................
+
+What if i dont return Future?
+
+public Future<String> startDbServer() {
+    System.out.println("Db Server Started");
+    return Future.succeededFuture("Db server is up");
+}
+
+public void startDbServer(){
+    //how to encapsulate data into future and send it back to caller
+}
+
+Syntax:
+
+public void startDbServer(Handler<AsyncResult<String>> aHandler){
+    //how to encapsulate data into future and send it back to caller
+	aHandler.handle(Future.succeededFuture("callback"));
+}
+
+startDbServer(ar->{})
+
+package com.cts.vertx.future;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.example.util.Runner;
+
+public class FutureHigherOrderVerticle extends AbstractVerticle {
+  public static void main(String[] args) {
+    Runner.runExample(FutureHigherOrderVerticle.class);
+  }
+
+  public void startDbServer(Handler<AsyncResult<String>> aHandler) {
+    //how to encapsulate data into future and send it back to caller
+    aHandler.handle(Future.succeededFuture("callback"));
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    startDbServer(ar->{
+       if(ar.succeeded()){
+         System.out.println(ar.result());
+       }
+    });
+
+  }
+}
+..............................................................................................
+					Promises
+.............................................................................................
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
