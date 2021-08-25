@@ -938,22 +938,181 @@ public class FutureHigherOrderVerticle extends AbstractVerticle {
 					Promises
 .............................................................................................
 
+Promises:
+
+Async Wrapper Object : Promise:
+...............................
+
+Promise is async abstraction largly promoted by javascript community.
+
+Dont Compare  javascript Promises with Vertx Promises , because both are different.
+
+Promise is "semantically meaningfull abstraction" for handling asyn results.
+
+Many times developers confuse with java Future and Vertx Future.
+
+Promises can't be processed directly with onComplete/setHandler/OnSuccecc/onFailure apis.
+
+Promises must be converted into Future before processing.
+
+package com.cts.vertx.promises;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.example.util.Runner;
+
+public class PromiseVerticle extends AbstractVerticle {
+  public static void main(String[] args) {
+    Runner.runExample(PromiseVerticle.class);
+  }
+
+  public Promise<String> login() {
+    String username = "admin";
+    String password = "admin";
+    Promise promise = Promise.promise();
+    if (username.equals("admin") && password.equals("admin")) {
+      promise.complete("login success");
+    } else {
+      promise.fail("Login failed");
+    }
+    return promise;
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    login().future().onComplete(ar -> {
+      if (ar.succeeded()) {
+        System.out.println(ar.result());
+      } else {
+        System.out.println(ar.cause());
+      }
+    });
+  }
+}
+..............................................................................................
+		Promises and Futures in Start method,deployment of verticles
+.............................................................................................
+
+Async Verticle Start and Stop:
+
+Sometimes you want to do something in your verticle start-up which takes some time and you don’t want the verticle to be considered deployed until that happens. For example you might want to start an HTTP server in the start method and propagate the asynchronous result of the server listen method
+
+The way to do it is to implement the asynchronous start method. This version of the method takes a Future as a parameter. When the method returns the verticle will not be considered deployed.
+
+...
+package com.cts.vertx.deloyment.advanced;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpServer;
+
+public class HttpVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //create
+    HttpServer server = vertx.createHttpServer().requestHandler(req -> {
+      req.response().end("Hello");
+    });
+    //start server
+    server.listen(8080, res -> {
+      if (res.succeeded()) {
+        System.out.println("Server Started");
+        startPromise.complete();//when ever completed is called , then verticle succfully deployment
+      } else {
+        startPromise.fail(res.cause());
+      }
+    });
+
+  }
+}
+.......
+
+package com.cts.vertx.deloyment.advanced;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.example.util.Runner;
+
+public class AsynVerticleDeployement extends AbstractVerticle {
+  public static void main(String[] args) {
+    Runner.runExample(AsynVerticleDeployement.class);
+  }
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+   // super.start(startPromise);
+//    vertx.deployVerticle(new HttpVerticle(), ar -> {
+//      if (ar.succeeded()) {
+//        System.out.println("Verticle deloyed  : " + ar.result());
+//      }
+//    });
+//    vertx.deployVerticle(HttpVerticle.class.getName(), ar -> {
+//      if (ar.succeeded()) {
+//        System.out.println("Verticle deloyed  : " + ar.result());
+//      }
+//    });
+
+    vertx.deployVerticle("com.cts.vertx.deloyment.advanced.HttpVerticle", ar -> {
+      if (ar.succeeded()) {
+        System.out.println("Verticle deloyed  : " + ar.result());
+      }
+    });
+  }
+}
+.............................................................................................						Non blocking apis
+.............................................................................................
+
+Vertx provides lot of non blocking apis
+
+1.Timer
+2.File System
+3.HTTP API
 
 
+	setTimer(long delay, Handler<Long> handler)
+Set a one-shot timer to fire after delay milliseconds, at which point handler will be called with the id of the timer.
 
 
+package com.cts.vertx.nonblocking.timers;
 
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.example.util.Runner;
 
+import java.util.Date;
 
+public class TimersVerticle extends AbstractVerticle {
+  public static void main(String[] args) {
+    Runner.runExample(TimersVerticle.class);
+  }
 
+  public void blockMe(String message) {
+    System.out.println(message);
+  }
 
+  public void delay() {
+    vertx.setTimer(1000, ar -> {
+      System.out.println("Hello , I am delayed");
+    });
+  }
 
+  public void tick() {
+    vertx.setPeriodic(1000, ar -> {
+      System.out.println(new Date());
+    });
+  }
 
-
-
-
-
-
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    super.start(startPromise);
+    blockMe("start");
+    delay();
+    tick();
+    blockMe("end");
+  }
+}
 
 
 

@@ -1,0 +1,849 @@
+				Micro Services Implementation Using Vertx
+..............................................................................................
+
+Application Types
+
+1.System softwares- OS,Device related application
+2.Application softwares- to solve real world problems - banking,insurance,retail...
+
+How to develop application software?
+
+-Programming language - java
+   -Lib,Frameworks,toolkits
+
+Any application has two things
+
+-Application code
+
+-Datasource-Database/filesystem/inmemory.
+
+Any application is designed based on some arch.
+
+-main frame based
+-client server 
+  -single
+  -two tier
+  -there tier
+  -n-tier
+tier -layer
+
+-User interface
+-back end 
+   -service 
+   -data layer
+
+Banking:
+ -java language- Spring Framework
+
+Web application-Restfull architecture-based on Rest spec.
+
+-Spring MVC
+.........................................................................................
+                                           Distributed Application
+..........................................................................................
+
+1.Monolithic
+
+Apps in java :
+
+ in dev we write code,compile code,run time.
+
+how to handover application to customer - packing
+
+ java apps are packed
+   -jar
+   -war
+   -ear
+
+data.jar
+util.jar
+banking.war
+
+...........................................................................................
+
+Deployment procesS:
+
+  putting war/ear on web servers
+...........................................................................................
+
+Customers/users will access the application using urls -http://www.examplebank.com/
+
+..........................................................................................
+
+
+1.Monollithic Application Development Steps
+
+Properties:
+
+1.Domain - Biz requirement  - Domain Analyist - Collecting Requirement
+
+2.Requirement into Software Specification
+
+Technology:
+ Java-JEE
+
+ -Framework -Spring
+ -Database - MYsql
+ -Middlewares -  RabbitMQ....
+ -Dev Server -Tomcat
+ -DeploymentServer - JBoss  
+
+3.High Level Design
+   Data Modeling
+   JEE App Design
+    -Web layer ,entity layer,messaging layer
+
+
+4.Development
+    Provisions for dev
+
+5.Testing 
+    
+
+6.Production Plan.
+
+
+Monolithic app work flow will go one by one 
+
+
+Cons of Monolithic:
+
+1.Requirement can t be freezed in short duration, since biz is dynamic.
+
+2.Tech stack:
+  There are many modules in the app, any one of the module need to be development in different
+ Technology
+  -python,nodejs,Ruby,C#
+  -different databases -  sql, nosql,messaging servers
+
+ Vendor-lock
+
+3.Design can be started once req is freezed
+  -we have many modules, most of the modules are over, payment module taking much time to freeze.
+
+4.Dev
+   Dev cant be started due to req not clear.
+
+5.Test 
+   until over testing cant be
+
+6.Deployment - Production
+   -The whole app must be ready for deployment.
+   -Provisioning
+      -database,webservers,middlewares....
+..............................................................................................
+					Micro Services:
+
+Common ideas
+
+1.Highly maintainable and testable
+2.Loosely coupled
+3.Independently deployable
+4.Organized around business capabilities
+5.Owned by a small team
+
+
+Advantages:
+
+Strong Module Boundaries: Microservices reinforce modular structure, which is particularly
+important for larger teams.
+
+• Independent Deployment: Simple services are easier to deploy, and since they are autonomous,
+are less likely to cause system failures when they go wrong.
+
+• Technology Diversity: You can mix multiple languages, development frameworks and datastorage
+technologies (i.e. each team working on a microservice has more flexibility to employ
+different technologies without affecting other teams).
+  
+
+Cons of Micro Services:
+.......................
+
+• Distribution: Distributed systems are harder to program since remote calls are slow and are
+always at risk of failure.
+• Eventual Consistency: Maintaining strong consistency is extremely difficult for a distributed system, which means everyone has to manage eventual consistency.
+• Operational Complexity: You need a mature operations team to manage lots of services which
+are being redeployed regularly.
+.............................................................................................
+
+.............................................................................................
+                               Distributed Application Design Patterns
+.............................................................................................
+
+Distributed Application Design Pattern: 
+-Monolithic
+-MicroServices
+.............................................................................................
+                            Monoloith Design patterns 
+.............................................................................................
+
+1.GOF patterns
+2.JEE Patterns
+   -MVC
+   -DAO
+   -Service Locator
+
+..............................................................................................
+	        Microservices Application Design Patterns
+.............................................................................................
+Monolith to Micro services:
+...........................
+Cube Model to scale app
+
+-Functional Decomposition : DDD model- 
+   Microservices are subdomain driven model. 
+
+
+Data Layer-(Data Management) Design patterns In Microservices:
+............................................
+1.Database per Service
+2.Shared database
+3.Saga
+4.API Composition
+5.CQRS
+6.Domain event
+7.Event sourcing
+...........................................................................................  
+
+		Application Development and its Related Patterns:
+...........................................................................................
+
+-Language ----Framework /Lib
+-Java:
+Style:
+  -Object Oriented Programming language
+  -Functional Style Programming 
+
+OOP :
+ -Object
+   -State + Behaviour
+
+What is Service?
+  Service is nothing but "offer".
+  The Object which offer some features
+
+  OrderService offers order related Features
+  -placeOrder
+  -findAllOrders
+  -findOrderByid
+  -updateExistingOrder
+  -cancelOrder
+  -etc....
+What is Micro?
+   Smallest 
+
+What is Micro Service?
+   Smallest Service in   a domain
+
+Is there is any pattern is avaible to design Service?
+
+Based on SOLID Prinicples
+
+1.Single Responsibility Principle
+2.Open/Closed Principle
+3.Liskov Substitution Principle
+4.Interface Segregation Principle
+5.Dependency Inversion
+
+Every service need to designed based on 
+
+ "Single Responsibility Principle" - SRP
+
+How to Represent Service?
+
+ Every Service is Object.
+
+class CreditCardService {
+
+}
+class DebitCardService {
+
+}
+............................................................................................
+				Object (Service) Communication:
+.............................................................................................
+Service Communication style Design Pattern
+
+1.Remote Procedure Invocation
+2.Messaging
+3.Domain-specific protocol
+4.Idempotent Consumer
+...........................................................................................
+				Service Communication and failures
+
+Distributed Services are subject to fail,slow.
+
+Eg:
+
+ Service-A calls Service-B --may call external systems like db,apis,message middlewares.
+
+Service-B may fail due to various reasons
+   -Network failure
+   -Latancy issues
+   -Exceptions and Errors
+
+Because of One Service Failure
+The entire system should not fail.
+..............................................................................................
+                           Micro Service Design pattern to handle failures
+			           (Realiability Patterns)
+.............................................................................................
+
+Incase failure happens, Reality Patterns gives alternate solution to the caller(clients).
+
+1.CircuitBreaker
+2.BulkHead
+3.ReateLimiter
+4.Retry
+5.TimeLimiter
+6.Fallbacks using cache
+..............................................................................................
+				   Service Identification and Communication
+..............................................................................................
+				
+If services are talking each other in network we need to know
+
+-location of the service and port address of the service.
+
+incase if services are running containers and cloud env, where ip address is dynamic, how services can collabrate using ip address/dns names.
+.............................................................................................
+			      Service Registry and Discovery Patterns
+...............................................................................................
+
+What is Service Registry?
+   
+   Middleware where services are registered before access them.  
+
+Service Registries are third party softwares
+
+1.Apache Zookeeper
+2.Consul
+3.Netflix eureka
+4.Redis
+etc......
+
+Why Service Registry?
+
+-Where are services are hosted in dynamic virtualized or containerized env where we cant identify the service instances.
+
+What is Discovery ? 
+  Looking up/Search services from Service Registry
+............................................................................................
+  		          Scalability and High Availablity
+............................................................................................
+
+What if i want to run the same instance multiple copies?
+ This is called horizintal scaling 
+
+When we scale apps, we need to indentifiy which instance will be served to the caller service.
+
+Load Balancer  is component which takes cares of selecting right instance based on algorthims provided by load balancer.
+
+Algorthims may be round robin,random,cpu usage based,sharding , latency based.
+..............................................................................................
+			     How to deploy microservices in production
+				     Deployment Patterns
+..............................................................................................
+
+1.Multiple services per host.
+2.Single Service instance per host
+3.Service instance per vm
+4.Service instance per container
+5.Servless Deployment
+6.Service Deployment Platforms
+..............................................................................................
+				 Development and Production Common things
+
+1.Configuration:
+   How to configure application properties
+   -Settings
+      db
+      web
+      security
+      app dynamic parameters
+
+We can maintain externalized / distribtued configuration system - Centeralized Configuration
+information
+ -database
+ -mailing
+ -registry
+ -payment gate
+ -passwords/ walets
+
+It can a server.
+ -ldap
+ -kubernets - config map
+ -apache zookeeper
+
+What ever key value server.
+.............................................................................................
+				Maintaince/Management patterns
+............................................................................................
+Monitoring /Managing Patterns:
+..............................
+
+1.Logging
+  Logs with in Services
+
+Log Types:
+-Console Logs
+-File Based logs
+-Database logs
+
+				How to log centeralized and anaylis
+
+1.ELK
+2.Graylog
+3.EFK
+4.Sys logs
+..............................................................................................
+					Mertics
+
+Perfomance Management:
+
+How to measure microservices performance?
+
+Memory,Process,threads....
+
+1.Prometheus
+2.DataDog
+3.MicroMeter
+..............................................................................................
+				  Tracing
+		
+How to trace service calls?
+ service to service call duration,response time.
+
+1.Zipkin
+2.Jaeger
+.............................................................................................
+				Health Patterns and Tools
+............................................................................................
+
+Health of
+-database
+-web end points
+-message server health
+
+1.Prometheus
+2.actuator 
+..............................................................................................
+				 External API GateWay
+
+Api Gate way can be used for connecting microservices in and outside world.
+
+Api gateways
+
+1.apigee way
+2.aws
+3.Netfilx api gateway
+4.Nginx
+.............................................................................................
+			          Micro Services Security
+............................................................................................
+
+Authentication and authorization
+
+In micro servies and gateways patterns, microservices consist of numerous services.
+The api gate way is the single entry point for client request.
+It authenticate requests, and forwards them to other services, which might in turn invoke other services
+
+In monlith systems, auth implemented via "Session Tokens" -  userid and password is exchanged
+via "cookie" header.
+............................................................................................
+				Implementation : JSON Web Token
+............................................................................................
+
+JWT is also token based pattern like "session Tokens" , where session tokens are very usefull only if the application is hosted in single server.
+
+Since session token cant be used to track apps running in different process. so we can use 
+JWT , Sticky Session from api gateway.
+.............................................................................................
+   		 Micro Service Pattern/Architecture Implementation
+............................................................................................
+
+Microservies can be implemented on any platform(os), on language - Platform,language indepand.
+
+Micro service implmentions On JVM:
+..................................
+
+1.Spring Framework provides an Project - Spring Cloud
+2.Quarkus Framework provides an project - MicroProfile ---SmallRye
+3.Ecplise Vertx
+4.MicroNaut - written in Kotlin
+5.Light4J
+etc.......
+..............................................................................................
+
+                           MicroServices implemenation on Vertx
+.............................................................................................
+
+What is service?
+  Object which gives api, which transfer data.
+
+Service Implemenation:
+-Verticles
+
+Types of Services:
+
+-HTTP based service
+   Which are exposed as Restful api
+-BackEnd service
+   Within Vertx echo system using EventBus
+
+.............................................................................................
+				Restfull Web Developement in vertx
+.............................................................................................
+
+
+Core features of vertx web development
+
+-it is non blocking - min number of threads are used- there is no request per thread model.
+-it is reactive, so that data streaming ,processing is possible.
+
+Web App development in vertx:
+
+Vertx is fully powered with non blocking apis.
+Vertx supports http prototcal to build non blocking web apps.
+
+Modules In web space:
+
+1.vertx core http module.
+2.vertx-web module - It is minialistic framework to build realtime Webservices and dynamic web apps
+3.vertx-webclient -  Service interaction api via  http Protocal
+
+
+HTTP Core module Object:
+
+1.HttpServer
+   -Used to build web containers
+   -Used to handle incomming request and sending response.
+2.HttpServerRequest
+   -Object used to handle incoming request
+   -has api called response() to get Resonse Object
+3.HttpServerResponse
+   -Object used to send resonse to clients
+
+
+
+Simple Http Server:
+package com.cts.vertx.microservice;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerResponse;
+
+public class MainVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //create WebServer
+    HttpServer httpServer = vertx.createHttpServer();
+    //Handle Client Request : on event loop thread
+    httpServer.requestHandler(request -> {
+      //how to send response
+      HttpServerResponse response = request.response();
+      //set status code
+      response.setStatusCode(200);
+      //set content type
+      response.putHeader("content-type", "text/plain");
+      //set custom header
+      response.putHeader("greeting", "Hello");
+      //content length header
+      response.putHeader("Content-Length", "100");
+      //write data into output stream
+      response.write("Hello");
+      //close the connection
+      response.end();
+    });
+
+    //Start Server
+    httpServer.listen(8080, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("HTTP Server started on " + ar.result().actualPort());
+      }
+    });
+
+  }
+}
+......................................................................................	
+				   Are you fluent?
+.......................................................................................
+
+Fluent is other wise called as builder pattern or command chain pattern.
+
+A fluent api where multiple methods can be chained together. : which is mostly recommended in vertx.
+
+
+package com.cts.vertx.microservice;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+
+public class MainHttpServerVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //Fluent Api pattern
+    vertx.createHttpServer().requestHandler(req -> {
+      req.response()
+        .putHeader("content-type", "text/plain")
+        .putHeader("message", "Hello")
+        .end("Hello");
+    }).listen(8080, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("HTTP Server started on " + ar.result().actualPort());
+      }
+    });
+
+  }
+}
+...........................................................................................
+			     JSON DATA
+...........................................................................................
+
+In Vertx json is default data interchange format for sending data across the micro services.
+
+Vertx Provides Builtin json parser Object.
+
+JsonObject
+
+How to create json object and send it to client?
+
+package com.cts.vertx.microservice;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+
+
+public class JsonHttpVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+
+    //old style
+//    JsonObject jsonObject = new JsonObject();
+//    jsonObject .put("id", 1);
+//    jsonObject .put("name", "Subramanian");
+//    jsonObject  .put("city", "coimbatore");
+
+    //fluent style
+//    JsonObject user = new JsonObject()
+//      .put("id", 1)
+//      .put("name", "Subramanian")
+//      .put("city", "coimbatore");
+
+    //Map object can be converted into json
+//    Map<String, Object> map = new HashMap<>();
+//    map.put("id", 1);
+//    map.put("name", "Subramanian");
+//    map.put("city", "coimbatore");
+//    JsonObject user = new JsonObject(map);
+
+    User userModel = new User(1, "Subramanian", "Coimbatore");
+    JsonObject user = new JsonObject()
+      .put("id", userModel.getId())
+      .put("name", userModel.getName())
+      .put("city", userModel.getCity());
+
+    //return list of users:JsonArray
+    JsonArray users = new JsonArray()
+      .add(user)
+      .add(new JsonObject().put("id", 2).put("name", "Ram").put("city", "Coimbatore"));
+
+    //Fluent Api pattern
+    vertx.createHttpServer().requestHandler(req -> {
+      req.response()
+        .putHeader("content-type", "application/json")
+        .putHeader("message", "Hello")
+        .end(users.encodePrettily());
+    }).listen(8080, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("HTTP Server started on " + ar.result().actualPort());
+      }
+    });
+
+  }
+}
+.............................................................................................
+			   How to Handle Client Request
+.............................................................................................
+
+Simple Request Handling:
+
+package com.cts.vertx.microservice;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+
+public class HttpClientRequestHandling extends AbstractVerticle {
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //Fluent Api pattern
+    vertx.createHttpServer().requestHandler(req -> {
+      //how to read incoming request data
+      req.bodyHandler(bodyHandler -> {
+        System.out.println(bodyHandler.toString());
+      });
+      req.response()
+        .putHeader("content-type", "text/plain")
+        .putHeader("message", "Hello")
+        .end("Hello");
+
+    }).listen(8080, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("HTTP Server started on " + ar.result().actualPort());
+      }
+    });
+  }
+}
+
+
+Echo : Receive input and return the same.
+
+package com.cts.vertx.microservice;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
+
+public class HttpClientRequestHandling extends AbstractVerticle {
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //Fluent Api pattern
+    vertx.createHttpServer().requestHandler(req -> {
+      //how to read incoming request data
+//      req.bodyHandler(bodyHandler -> {
+//        System.out.println(bodyHandler.toString());
+//        req.response()
+//          .putHeader("content-type", "text/plain")
+//          .putHeader("message", "Hello")
+//          .end(bodyHandler.toString());
+//      });
+
+      //how to read json
+      req.bodyHandler(bodyHandler -> {
+        JsonObject jsonObject = bodyHandler.toJsonObject();
+        System.out.println(jsonObject.encodePrettily());
+        //Map with user
+//        User user = jsonObject.mapTo(User.class);
+//        System.out.println(user);
+        req.response()
+          .putHeader("content-type", "text/plain")
+          .putHeader("message", "Hello")
+          .setStatusCode(201)
+          .end("Created");
+      });
+
+
+    }).listen(8080, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("HTTP Server started on " + ar.result().actualPort());
+      }
+    });
+  }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+			   Are we building Realtime RESTFull Services
+..............................................................................................
+No!
+
+Because RestFull webservies must have the following features
+
+1.Resource - like CustomerResource,OrderResource,ProductResource.....
+
+
+2.URI Mapping
+
+ /api/customers
+ /api/customers/1
+ /api/customers/orders
+ /api/customers/search/name
+
+3.HTTP Method Mapping
+  GET,POST,DELETE,PUT
+
+Vertx-core http module cant be used to build realtime http based microservices
+............................................................................................
+				vertx-web
+
+Vertx-web has been built on the top of vertx-core http module like servlets are core spring-mvc is framework
+
+Vertx-web is mini framework built on the top of vertx-core http
+
+Features:
+Routing (based on method, path, etc)
+Regular expression pattern matching for paths
+Extraction of parameters from paths
+Content negotiation
+Request body handling
+Body size limits
+Multipart forms
+Multipart file uploads
+Sub routers
+Session support - both local (for sticky sesions) and clustered (for non sticky)
+CORS (Cross Origin Resource Sharing) support
+Error page handler
+HTTP Basic/Digest Authentication
+Redirect based authentication
+Authorization handlers
+JWT/OAuth2 based authorization
+User/role/permission authorization
+Favicon handling
+Template support for server side rendering, including support for the following template engines out of the box:
+Handlebars
+Jade,
+MVEL
+Thymeleaf
+Apache FreeMarker
+Pebble
+
+Rocker
+
+Response time handler
+
+Static file serving, including caching logic and directory listing.
+
+Request timeout support
+
+SockJS support
+
+Event-bus bridge
+
+CSRF Cross Site Request Forgery
+
+VirtualHost
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
