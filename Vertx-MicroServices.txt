@@ -816,21 +816,426 @@ Event-bus bridge
 CSRF Cross Site Request Forgery
 
 VirtualHost
-
+..............................................................................................
  
+Simple Rest:
+package com.cts.vertx.microservice.http.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.ext.web.Router;
+
+public class SimpleRest extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    //create Router object
+    Router router = Router.router(vertx);
+
+    //expose api
+    router.get("/api/products").handler(rc -> {
+      rc.response().end("findAll products");
+    });
+    router.get("/api/products/:productId").handler(rc -> {
+      rc.response().end("Get Product By Id");
+    });
+    router.post("/api/products").handler(rc -> {
+      rc.response().end("Product Saved");
+    });
+    router.put("/api/products/:productId").handler(rc -> {
+      rc.response().end("update Product By Id");
+    });
+    router.delete("/api/products/:productId").handler(rc -> {
+      rc.response().end("delete Product By Id");
+    });
+
+    vertx.createHttpServer().requestHandler(router).listen(8080, ar -> System.out.println(
+      "Server is Runnin in " + ar.result().actualPort()
+    ));
+
+  }
+}
+..............................................................................................
+					InMemory CURD
+.....................................................................................................................
+
+package com.cts.vertx.microservice.http.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class RestInMemoryCurdVerticle extends AbstractVerticle {
+
+  //in memeory db
+  private Map<String, JsonObject> products = new HashMap<>();
+
+  @Override
+  public void start() throws Exception {
+    setupIntialData();
+    //create Router object
+    Router router = Router.router(vertx);
+
+    //expose api
+
+    //This handler is called for every request and every url
+    //middlewares/filters/interceptors
+    router.route().handler(rc -> {
+      System.out.println(rc.request().method() + " - " + rc.request().path());
+      rc.next();
+    });
+    //Middleware for this url
+    router.route(HttpMethod.GET, "/api/products").handler(rc -> {
+      System.out.println("Products api called");
+      rc.next();
+    });
+    //handling Body payloads : Middlewares
+    router.route().handler(BodyHandler.create());
+
+    router.get("/api/products").handler(rc -> {
+      JsonArray arr = new JsonArray();
+      products.forEach((k, v) -> arr.add(v));
+      rc.response().putHeader("content-type", "application/json").end(arr.encodePrettily());
+    });
+    router.get("/api/products/:productId").handler(rc -> {
+      String productId = rc.request().getParam("productId");
+      HttpServerResponse response = rc.response();
+      //if product id is null
+      if (productId == null) {
+        sendError(400, response);
+      } else {
+        JsonObject product = products.get(productId);
+        if (product == null) {
+          sendError(400, response);
+        } else {
+          response.putHeader("content-type", "application/json").end(product.encodePrettily());
+        }
+      }
+
+    });
+    router.post("/api/products/:productId").handler(rc -> {
+      String productId = rc.request().getParam("productId");
+      HttpServerResponse response = rc.response();
+      if (productId == null) {
+        sendError(400, response);
+      } else {
+        JsonObject product = rc.getBodyAsJson();
+        if (product == null) {
+          sendError(400, response);
+        } else {
+          //add a new product
+          products.put(productId, product);
+          response.setStatusCode(201).end("Product is saved");
+        }
+      }
+    });
+    //todo--you have to implement update
+    router.put("/api/products/:productId").handler(rc -> {
+      rc.response().end("update Product By Id");
+    });
+    //todo--you have to implement update
+    router.delete("/api/products/:productId").handler(rc -> {
+      rc.response().end("delete Product By Id");
+    });
+
+    vertx.createHttpServer().requestHandler(router).listen(8080, ar -> System.out.println(
+      "Server is Runnin in " + ar.result().actualPort()
+    ));
+
+  }
+
+  private void sendError(int statuscode, HttpServerResponse response) {
+    response.setStatusCode(statuscode).end();
+  }
+
+  private void setupIntialData() {
+    addProduct(new JsonObject().put("id", "prod1234").put("name", "Tv").put("price", 10000));
+    addProduct(new JsonObject().put("id", "prod1235").put("name", "watch").put("price", 234));
+    addProduct(new JsonObject().put("id", "prod1236").put("name", "radio").put("price", 1000));
+    addProduct(new JsonObject().put("id", "prod1237").put("name", "computer").put("price", 345));
+    addProduct(new JsonObject().put("id", "prod1238").put("name", "tableandchair").put("price", 8999));
+
+  }
+
+  private void addProduct(JsonObject jsonObject) {
+    products.put(jsonObject.getString("id"), jsonObject);
+  }
+}
+.............................................................................................
+			  How to integrate with databses
+............................................................................................
+
+In vertx web layer is non blocking, database layer can also be non blocking.
+
+Vert only supports jdbc technology in non blocking way.
+If i want to write jpa,hibernate, yes we can but which will be blocking way.
+
+Non Blocking JDBC and Non blocking Web
+......................................
+
+Vert.x JDBC client:
+
+This client allows you to interact with any JDBC compliant database using an asynchronous API from your Vert.x application.
+
+The client API is represented with the interface 
+JDBCClient
+.
+
+To use this project, add the following dependency to the dependencies section of your build descriptor:
+
+
+SQL Client Templates
+A small library designed to facilitate the execution and data manipulation of SQL queries
+
+package com.cts.vertx.microservice.http.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.jdbcclient.JDBCPool;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlResult;
+import io.vertx.sqlclient.templates.SqlTemplate;
+import io.vertx.sqlclient.templates.TupleMapper;
+
+import java.util.Arrays;
+import java.util.Map;
+
+public class RestJDBCService extends AbstractVerticle {
+
+  //jdbc connection pool object
+  private JDBCPool client;
+
+  //SQL Template api
+  private SqlTemplate<Map<String, Object>, RowSet<JsonObject>> getProductTemplate;
+  private SqlTemplate<JsonObject, SqlResult<Void>> addProductTemplate;
+
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    //establish connection
+    client = JDBCPool.pool(vertx, new JsonObject()
+      .put("url", "jdbc:hsqldb:mem:test?shutdown=true")
+      .put("dirver_class", "org.hsqldb.jdbcDriver"));
+
+    //Test Connection
+    client.getConnection().onSuccess(System.out::println).onFailure(System.out::println);
+
+    //Getting Products
+    String selectQuery = "SELECT id,name,price,weight FROM products WHERE id= #{id}";
+    getProductTemplate = SqlTemplate.forQuery(client, selectQuery).mapTo(Row::toJson);
+
+    //insert
+    String insertQuery = "INSERT INTO  products(name,price,weight) VALUES (#{name},#{price},#{weight})";
+    addProductTemplate = SqlTemplate.forUpdate(client, insertQuery).mapFrom(TupleMapper.jsonObject());
+
+    //How to poulate some mock data
+    String CRATE_TABLE = "CREATE TABLE IF NOT EXISTS products(id int IDENTITY, name VARCHAR(255), price FLOAT, weight INT)";
+
+    client.query(CRATE_TABLE)
+      .execute()
+      .compose(res -> addProductTemplate.executeBatch(
+        Arrays.asList(
+          new JsonObject().put("name", "Tv").put("price", 10000).put("weight", 2),
+          new JsonObject().put("name", "watch").put("price", 234).put("weight", 2),
+          new JsonObject().put("name", "radio").put("price", 1000).put("weight", 2),
+          new JsonObject().put("name", "computer").put("price", 345).put("weight", 2),
+          new JsonObject().put("name", "tableandchair").put("price", 8999).put("weight", 2))))
+      .compose(v -> {
+        //After inserting data : start web part
+        Router router = Router.router(vertx);
+        //This handler is called for every request and every url
+        //middlewares/filters/interceptors
+        router.route().handler(rc -> {
+          System.out.println(rc.request().method() + " - " + rc.request().path());
+          rc.next();
+        });
+        //Middleware for this url
+        router.route(HttpMethod.GET, "/api/products").handler(rc -> {
+          System.out.println("Products api called");
+          rc.next();
+        });
+
+        //handling Body payloads : Middlewares
+        router.route().handler(BodyHandler.create());
+        //Get all the products from the database
+        router.get("/api/products").handler(this::handleGetProducts);
+        router.post("/api/products").handler(this::handleAddProducts);
+
+        return vertx.createHttpServer().requestHandler(router).listen(8080);
+
+      }).<Void>mapEmpty().onComplete(startPromise);
+
+  }
+
+  private void handleAddProducts(RoutingContext rc) {
+    HttpServerResponse response = rc.response();
+    JsonObject product = rc.getBodyAsJson();
+    addProductTemplate.execute(product)
+      .onSuccess(res -> {
+        response.setStatusCode(201).end("Created");
+      }).onFailure(err -> {
+        response.setStatusCode(500);
+      });
+  }
+
+  private void handleGetProducts(RoutingContext rc) {
+    HttpServerResponse response = rc.response();
+    String selectProducts = "SELECT * From products";
+    client.query(selectProducts)
+      .execute(rowSet -> {
+        if (rowSet.failed()) {
+          rc.fail(500);
+        } else {
+          JsonArray arr = new JsonArray();
+          rowSet.result().forEach(row -> {
+            arr.add(row.toJson());
+          });
+          rc.response().putHeader("content-type", "application/json").end(arr.encodePrettily());
+        }
+      });
+
+
+  }
+}
+.............................................................................................
+				Service Communication : Micro services
+.............................................................................................
+
+Remote Procedure Invocation
+Messaging
+Domain-specific protocol
+Idempotent Consumer
+.............................................................................................
+RPI : 
+REST
+gRPC
+Apache Thrift
+............................................................................................
+
+REST
+....
+ The Services can talk each other via  http protocal.
+
+How vertx implements HTTP communication?
+
+Vert.x Web Client:
+.................
+
+Vert.x Web Client is an asynchronous HTTP and HTTP/2 client.
+
+The Web Client makes easy to do HTTP request/response interactions with a web server, and provides advanced features like:
+
+
+<dependency>
+ <groupId>io.vertx</groupId>
+ <artifactId>vertx-web-client</artifactId>
+ <version>4.1.2</version>
+</dependency>
+
+Provider:
+package com.cts.vertx.microservice.communication;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.ext.web.Router;
+
+public class MessageServiceProvider extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    Router router = Router.router(vertx);
+    //send plain message
+    router.get("/message").handler(rc -> {
+      rc.response().setStatusCode(200).end("Hello! Provider");
+    });
+    vertx.createHttpServer().requestHandler(router).listen(3000);
+  }
+}
+
+Consumer
+package com.cts.vertx.microservice.communication;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+
+
+public class MessageServiceConsumer extends AbstractVerticle {
+
+  private WebClient webClient;
+
+  @Override
+  public void start() throws Exception {
+    Router router = Router.router(vertx);
+    webClient = WebClient.create(vertx);
+    //send plain message
+    router.get("/hello").handler(rc -> {
+      webClient.get(3000, "localhost", "/message")
+        .send(ar -> {
+          if (ar.succeeded()) {
+            HttpResponse<Buffer> response = ar.result();
+            rc.response().setStatusCode(200).end(response.bodyAsString());
+          } else {
+            rc.response().setStatusCode(500).end(ar.cause().getMessage());
+          }
+        });
+    });
+
+    vertx.createHttpServer().requestHandler(router).listen(3001);
+  }
+
+}
+
+Deployer
+package com.cts.vertx.microservice.communication;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+
+public class Deployer extends AbstractVerticle {
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    vertx.deployVerticle(MessageServiceConsumer.class.getName(), ar -> {
+      if (ar.succeeded()) {
+        System.out.println(MessageServiceConsumer.class.getName() + " " + ar.result());
+      } else {
+        System.out.println(ar.cause());
+      }
+    });
+    vertx.deployVerticle(MessageServiceProvider.class.getName(), ar -> {
+      if (ar.succeeded()) {
+        System.out.println(MessageServiceProvider.class.getName() + " " + ar.result());
+      } else {
+        System.out.println(ar.cause());
+      }
+    });
+  }
+}
+
+Use Case:
+You can build service , using service , you have to talk to external /third party rest apis
 
 
 
+............................................................................................
+				  Back End Services Communicaiton : EDA 
+............................................................................................
 
-
-
-
-
-
-
-
-
-
+EventBus:
+  EventBus is used to enable service to service communication via events
+..............................................................................................
 
 
 
