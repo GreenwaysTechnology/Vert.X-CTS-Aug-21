@@ -2394,3 +2394,873 @@ public class ScallerDeployer {
     });
   }
 }
+............................................................................................
+			Clustering : How to communicate across vertx Engine
+			         (Scallablity + High availablity)
+............................................................................................
+
+Distributed Vertx:
+.................
+
+As of now we have seen 
+ -How to write verticle on single vertx engine
+ -How verticles communicate using event bus on single vertx engine
+
+
+Multi node architecture: Multi vertx engine architecuture:
+
+Vertx Types:
+...........
+
+1.Standard Vertx
+   -single vertx engine
+2.Clustered Vertx
+   -distributed vertx engine.
+
+Clustering:
+
+ Grouping  multiple different vertx engines  under one single communication system.
+Kind of networking.we are making networking infrastructure among Vertx engins.
+
+How many vertx engines can communcates?
+
+ more vertx engines
+
+Via Cluster Managers and Providers :
+
+ Cluster Providers are third party servers, through vertx can communicates.
+
+Vertx - Clustering:
+...................
+
+Clustering , means organization application under one communication channel.
+
+Vertx uses integration/clustering technologies.
+
+Vertx uses hazelcast ClusterManager/provider by default.
+
+Cluster : group of something - group of verticles/vertx instance/jvm
+
+in order to connect vertx apps across processes, we need cordinator 
+-Bride softwares
+
+Vertx can work with
+-hazelcast
+-apache zookeeper
+-apache ignite
+-apache Infinispan
+
+dependency:
+
+vertx-hazelcast
+
+ClusterManagers
+
+by default, vertx has hazelcast, we dont need to configure by default.
+
+
+ClusterManagers
+
+by default, vertx has hazelcast, we dont need to configure by default.
+
+
+How to enable clustering?
+
+In vertx clustering can be enabled in two ways
+
+1.through code
+
+Vertx Configuration;
+
+Types of vertx:
+1.standard vertx
+2.clusteredVertx
+
+ClusterManager mgr = new HazelcastClusterManager();
+
+VertxOptions options = new VertxOptions().setClusterManager(mgr);
+
+Vertx.clusteredVertx(options, res -> {
+  if (res.succeeded()) {
+    Vertx vertx = res.result();
+  } else {
+    // failed!
+  }
+});
+
+Configuring cluster manager:
+
+Vertx provides default-cluster.xml which is packaged inside cluster jar.
+
+if you want to override you can override cluster.xml file
+
+How to enable cluster feature?
+
+java -jar target/app.jar -cp . -cluster
+
+vertx run verticle -cp . -cluster
+..............................................................................................
+				
+1.Clustering
+   
+   We can run multiple vertx applications and each application can communicate each other 
+via centeralized cluter channel software(hazelcast,zookeeper,apache ignite).
+
+in order to setup cluster on vertx engine
+1.we have to enable via Vertx.clusteredVertx Method.
+
+
+Demo setup:
+we are simulating two verticles running separtely. how we can do that
+
+-need to run two verticles having main method.
+
+Two verticles are exchanging message via event bus (Distributed Event Bus).
+
+eg:
+
+1.ConsumerVerticle
+
+package com.cts.vertx.cluster;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+
+public class ConsumerVerticle extends AbstractVerticle {
+  public static void main(String[] args) {
+    ClusterManager mgr = new HazelcastClusterManager();
+    VertxOptions options = new VertxOptions().setClusterManager(mgr).setHAEnabled(true).setHAGroup("g1");
+    Vertx.clusteredVertx(options, cluster -> {
+      if (cluster.succeeded()) {
+        DeploymentOptions deploymentOptions = new DeploymentOptions();
+        cluster.result().deployVerticle("com.cts.vertx.cluster.ConsumerVerticle", deploymentOptions, res -> {
+          if (res.succeeded()) {
+            System.out.println("Deployment id is: " + res.result());
+          } else {
+            System.out.println("Deployment failed!");
+          }
+        });
+      } else {
+        System.out.println("Cluster up failed: " + cluster.cause());
+      }
+    });
+  }
+
+  private void consumeNews() {
+    EventBus eventBus = vertx.eventBus();
+    //Declare Consumer
+    MessageConsumer<String> consumer = eventBus.consumer("news.in.covid");
+    //handle/process the message/news
+    consumer.handler(news -> {
+      RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+      String jvmName = runtimeBean.getName();
+      System.out.println("Node  Name = " + jvmName);
+      long pid = Long.valueOf(jvmName.split("@")[0]);
+      System.out.println("PID  = " + pid + " Thread = " + Thread.currentThread().getName());
+      System.out.println("News 7's Today News : " + news.body());
+    });
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    consumeNews();
+  }
+}
+
+
+2.Producer Verticle
+
+package com.cts.vertx.cluster;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+
+public class PublisherVerticle extends AbstractVerticle {
+
+  public static void main(String[] args) {
+    ClusterManager mgr = new HazelcastClusterManager();
+    VertxOptions options = new VertxOptions().setClusterManager(mgr).setHAEnabled(true).setHAGroup("g1");
+
+    Vertx.clusteredVertx(options, vertxAsyncResult -> {
+      if (vertxAsyncResult.succeeded()) {
+        //deploy verticles on cluster env.
+        DeploymentOptions deploymentOptions = new DeploymentOptions()
+          .setInstances(2).setHa(true);
+        vertxAsyncResult.result().deployVerticle("com.cts.vertx.cluster.PublisherVerticle", deploymentOptions, res -> {
+          if (res.succeeded()) {
+            System.out.println("Deployment id is: " + res.result());
+          } else {
+            System.out.println("Deployment failed!");
+          }
+        });
+
+      } else {
+        System.out.println("Cluster up failed: " + vertxAsyncResult.cause());
+      }
+    });
+
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+    String jvmName = runtimeBean.getName();
+    //processid
+    long pid = Long.valueOf(jvmName.split("@")[0]);
+    vertx.setPeriodic(5000, ar -> {
+      System.out.println("PID  = " + pid + " Thread = " + Thread.currentThread().getName());
+      //publish message
+      String news = "Last 24 hrs, 50000 covid patients in India" + " From  " + jvmName;
+      vertx.eventBus().publish("news.in.covid", news);
+    });
+
+  }
+}
+
+
+Run two programs  one by one.
+
+Consumer:
+Sep 01, 2021 3:55:37 PM com.hazelcast.instance.impl.HazelcastInstanceFactory
+WARNING: Hazelcast is starting in a Java modular environment (Java 9 and newer) but without proper access to required Java packages. Use additional Java arguments to provide Hazelcast access to Java internal API. The internal API access is used to get the best performance results. Arguments to be used:
+ --add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED
+Sep 01, 2021 3:55:37 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [dev] [4.0.2] Prefer IPv4 stack is true, prefer IPv6 addresses is false
+Sep 01, 2021 3:55:37 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [dev] [4.0.2] Picked [192.168.0.101]:5701, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5701], bind any local is true
+Sep 01, 2021 3:55:37 PM com.hazelcast.system
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Hazelcast 4.0.2 (20200702 - 2de3027) starting at [192.168.0.101]:5701
+Sep 01, 2021 3:55:37 PM com.hazelcast.system
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
+Sep 01, 2021 3:55:37 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Backpressure is disabled
+Sep 01, 2021 3:55:38 PM com.hazelcast.instance.impl.Node
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Creating MulticastJoiner
+Sep 01, 2021 3:55:38 PM com.hazelcast.cp.CPSubsystem
+WARNING: [192.168.0.101]:5701 [dev] [4.0.2] CP Subsystem is not enabled. CP data structures will operate in UNSAFE mode! Please note that UNSAFE mode will not provide strong consistency guarantees.
+Sep 01, 2021 3:55:38 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Starting 12 partition threads and 7 generic threads (1 dedicated for priority tasks)
+Sep 01, 2021 3:55:38 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Sep 01, 2021 3:55:38 PM com.hazelcast.core.LifecycleService
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] [192.168.0.101]:5701 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/C:/Users/sasub/.m2/repository/com/hazelcast/hazelcast/4.0.2/hazelcast-4.0.2.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Sep 01, 2021 3:55:40 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] 
+
+Members {size:1, ver:1} [
+	Member [192.168.0.101]:5701 - fc2f2060-7e5f-4a68-a9ce-f5d5073fbc6f this
+]
+
+Sep 01, 2021 3:55:40 PM com.hazelcast.core.LifecycleService
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] [192.168.0.101]:5701 is STARTED
+Sep 01, 2021 3:55:40 PM com.hazelcast.internal.partition.impl.PartitionStateManager
+INFO: [192.168.0.101]:5701 [dev] [4.0.2] Initializing cluster partition table arrangement...
+Sep 01, 2021 3:55:41 PM io.vertx.core.impl.HAManager
+INFO: A quorum has been obtained. Any deploymentIDs waiting on a quorum will now be deployed
+Deployment id is: 2250aa87-83d1-482b-a0ed-086c8910d5e5
+
+
+
+After this run Producer
+"C:\Program Files\Java\jdk-11.0.11\bin\java.exe" "-javaagent:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2020.1.1\lib\idea_rt.jar=49876:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2020.1.1\bin" -Dfile.encoding=UTF-8 -classpath C:\session\CTS\VERTX-Session\aug\vertx-scalling\target\classes;C:\Users\sasub\.m2\repository\io\vertx\vertx-config\4.1.3\vertx-config-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-core\4.1.3\vertx-core-4.1.3.jar;C:\Users\sasub\.m2\repository\io\netty\netty-common\4.1.67.Final\netty-common-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-buffer\4.1.67.Final\netty-buffer-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-transport\4.1.67.Final\netty-transport-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-handler\4.1.67.Final\netty-handler-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-codec\4.1.67.Final\netty-codec-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-handler-proxy\4.1.67.Final\netty-handler-proxy-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-codec-socks\4.1.67.Final\netty-codec-socks-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-codec-http\4.1.67.Final\netty-codec-http-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-codec-http2\4.1.67.Final\netty-codec-http2-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-resolver\4.1.67.Final\netty-resolver-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-resolver-dns\4.1.67.Final\netty-resolver-dns-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\io\netty\netty-codec-dns\4.1.67.Final\netty-codec-dns-4.1.67.Final.jar;C:\Users\sasub\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.11.4\jackson-core-2.11.4.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-hazelcast\4.1.3\vertx-hazelcast-4.1.3.jar;C:\Users\sasub\.m2\repository\com\hazelcast\hazelcast\4.0.2\hazelcast-4.0.2.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-web-client\4.1.3\vertx-web-client-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-web-common\4.1.3\vertx-web-common-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-auth-common\4.1.3\vertx-auth-common-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-rx-java2\4.1.3\vertx-rx-java2-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-rx-java2-gen\4.1.3\vertx-rx-java2-gen-4.1.3.jar;C:\Users\sasub\.m2\repository\io\reactivex\rxjava2\rxjava\2.2.21\rxjava-2.2.21.jar;C:\Users\sasub\.m2\repository\org\reactivestreams\reactive-streams\1.0.3\reactive-streams-1.0.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-rx-gen\4.1.3\vertx-rx-gen-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-codegen\4.1.3\vertx-codegen-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-web\4.1.3\vertx-web-4.1.3.jar;C:\Users\sasub\.m2\repository\io\vertx\vertx-bridge-common\4.1.3\vertx-bridge-common-4.1.3.jar com.cts.vertx.cluster.PublisherVerticle
+Sep 01, 2021 3:56:09 PM com.hazelcast.instance.impl.HazelcastInstanceFactory
+WARNING: Hazelcast is starting in a Java modular environment (Java 9 and newer) but without proper access to required Java packages. Use additional Java arguments to provide Hazelcast access to Java internal API. The internal API access is used to get the best performance results. Arguments to be used:
+ --add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED
+Sep 01, 2021 3:56:09 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [dev] [4.0.2] Prefer IPv4 stack is true, prefer IPv6 addresses is false
+Sep 01, 2021 3:56:09 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [dev] [4.0.2] Picked [192.168.0.101]:5702, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5702], bind any local is true
+Sep 01, 2021 3:56:09 PM com.hazelcast.system
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Hazelcast 4.0.2 (20200702 - 2de3027) starting at [192.168.0.101]:5702
+Sep 01, 2021 3:56:09 PM com.hazelcast.system
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Copyright (c) 2008-2020, Hazelcast, Inc. All Rights Reserved.
+Sep 01, 2021 3:56:10 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Backpressure is disabled
+Sep 01, 2021 3:56:10 PM com.hazelcast.instance.impl.Node
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Creating MulticastJoiner
+Sep 01, 2021 3:56:10 PM com.hazelcast.cp.CPSubsystem
+WARNING: [192.168.0.101]:5702 [dev] [4.0.2] CP Subsystem is not enabled. CP data structures will operate in UNSAFE mode! Please note that UNSAFE mode will not provide strong consistency guarantees.
+Sep 01, 2021 3:56:10 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Starting 12 partition threads and 7 generic threads (1 dedicated for priority tasks)
+Sep 01, 2021 3:56:10 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Sep 01, 2021 3:56:10 PM com.hazelcast.core.LifecycleService
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] [192.168.0.101]:5702 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/C:/Users/sasub/.m2/repository/com/hazelcast/hazelcast/4.0.2/hazelcast-4.0.2.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Sep 01, 2021 3:56:11 PM com.hazelcast.internal.cluster.impl.MulticastJoiner
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Trying to join to discovered node: [192.168.0.101]:5701
+Sep 01, 2021 3:56:11 PM com.hazelcast.internal.nio.tcp.TcpIpConnector
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Connecting to /192.168.0.101:5701, timeout: 10000, bind-any: true
+Sep 01, 2021 3:56:11 PM com.hazelcast.internal.nio.tcp.TcpIpConnection
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] Initialized new cluster connection between /192.168.0.101:49946 and /192.168.0.101:5701
+Sep 01, 2021 3:56:17 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] 
+
+Members {size:2, ver:2} [
+	Member [192.168.0.101]:5701 - fc2f2060-7e5f-4a68-a9ce-f5d5073fbc6f
+	Member [192.168.0.101]:5702 - db7b37ac-7a0e-4ca2-b3d9-3540d0352016 this
+]
+
+Sep 01, 2021 3:56:18 PM com.hazelcast.core.LifecycleService
+INFO: [192.168.0.101]:5702 [dev] [4.0.2] [192.168.0.101]:5702 is STARTED
+Sep 01, 2021 3:56:18 PM io.vertx.core.impl.HAManager
+INFO: A quorum has been obtained. Any deploymentIDs waiting on a quorum will now be deployed
+Deployment id is: d1a2e316-44ad-478f-a812-e72810159084
+PID  = 23668 Thread = vert.x-eventloop-thread-2
+PID  = 23668 Thread = vert.x-eventloop-thread-1
+PID  = 23668 Thread = vert.x-eventloop-thread-2
+PID  = 23668 Thread = vert.x-eventloop-thread-1
+...........................................................................................
+	   Now you can see the output in consumer which publishing messages
+...........................................................................................
+				2.Scalling
+
+We have discussed already, how to scale no instances on vertx engine
+...........................................................................................
+				3.High Avaliablity and Fail-Over
+
+When we are running vertx in cluster env, there is possiblity of vertx instances may die abruuptly.
+The verticle is running in the same vertx engine, we need to move to antoher vertx engines
+
+Rules for fail-over:
+1.All vertx engine should be part of cluster
+2.All vertx engines should have common "cluster-group-id"
+3.Fail over is enabled by killing process only, not ctrl+c or Kill -SIGINT
+
+How to enable fail-over?
+
+via command line
+
+Steps: 
+
+Open cmd  3 command prompt
+
+1.vertx run ConsumerVerticle.java -ha -hagroup g1
+2.vertx run PublisherVerticle.java -ha -hagroup g1
+3.vertx bare -hagroup g1
+
+via code
+    VertxOptions options = new VertxOptions().setClusterManager(mgr)
+   .setHAEnabled(true).setHAGroup("g1");
+
+
+How  to enable auto scalling(means if any one instance dies ,automatically we can redeploy into another instances).
+
+docker run -i -t vertx/vertx4-exec bare -hagroup g1
+
+
+.............................................................................................
+
+package com.cts.vertx.cluster;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+
+public class PublisherVerticle extends AbstractVerticle {
+
+  public static void main(String[] args) {
+    ClusterManager mgr = new HazelcastClusterManager();
+    VertxOptions options = new VertxOptions().setClusterManager(mgr).setHAEnabled(true).setHAGroup("g1");
+
+    Vertx.clusteredVertx(options, vertxAsyncResult -> {
+      if (vertxAsyncResult.succeeded()) {
+        //deploy verticles on cluster env.
+        DeploymentOptions deploymentOptions = new DeploymentOptions()
+          .setInstances(2).setHa(true);
+        vertxAsyncResult.result().deployVerticle("com.cts.vertx.cluster.PublisherVerticle", deploymentOptions, res -> {
+          if (res.succeeded()) {
+            System.out.println("Deployment id is: " + res.result());
+          } else {
+            System.out.println("Deployment failed!");
+          }
+        });
+
+      } else {
+        System.out.println("Cluster up failed: " + vertxAsyncResult.cause());
+      }
+    });
+
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+    String jvmName = runtimeBean.getName();
+    //processid
+    long pid = Long.valueOf(jvmName.split("@")[0]);
+    vertx.setPeriodic(5000, ar -> {
+      System.out.println("PID  = " + pid + " Thread = " + Thread.currentThread().getName());
+      //publish message
+      String news = "Last 24 hrs, 50000 covid patients in India" + " From  " + jvmName;
+      vertx.eventBus().publish("news.in.covid", news);
+    });
+
+  }
+}
+.............................................................................................
+package com.cts.vertx.cluster;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+
+public class ConsumerVerticle extends AbstractVerticle {
+  public static void main(String[] args) {
+    ClusterManager mgr = new HazelcastClusterManager();
+    VertxOptions options = new VertxOptions().setClusterManager(mgr).setHAEnabled(true).setHAGroup("g1");
+    Vertx.clusteredVertx(options, cluster -> {
+      if (cluster.succeeded()) {
+        DeploymentOptions deploymentOptions = new DeploymentOptions();
+        cluster.result().deployVerticle("com.cts.vertx.cluster.ConsumerVerticle", deploymentOptions, res -> {
+          if (res.succeeded()) {
+            System.out.println("Deployment id is: " + res.result());
+          } else {
+            System.out.println("Deployment failed!");
+          }
+        });
+      } else {
+        System.out.println("Cluster up failed: " + cluster.cause());
+      }
+    });
+  }
+
+  private void consumeNews() {
+    EventBus eventBus = vertx.eventBus();
+    //Declare Consumer
+    MessageConsumer<String> consumer = eventBus.consumer("news.in.covid");
+    //handle/process the message/news
+    consumer.handler(news -> {
+      RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+      String jvmName = runtimeBean.getName();
+      System.out.println("Node  Name = " + jvmName);
+      long pid = Long.valueOf(jvmName.split("@")[0]);
+      System.out.println("PID  = " + pid + " Thread = " + Thread.currentThread().getName());
+      System.out.println("News 7's Today News : " + news.body());
+    });
+  }
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    consumeNews();
+  }
+}
+
+.............................................................................................
+Taskkill /PID 12696 /F
+.............................................................................................
+
+Service Discovery and Registry:
+..............................
+
+Lookup server and naming server.
+
+Data Base server which stores 'resources' :  web site address : dns server
+
+Same concept is used in distributed programming/microservices:
+-> RMI, EJB,DCOM
+
+Why Service Registry?
+
+ Registry is data base, used to store resources in centralized place.
+
+The programs and applications  are located in networks , so it is difficult to locate/search resources.
+
+Service discovery :
+
+ The process of looking up resources, called service discovery.
+
+
+Registry Server:
+ It is key-value pair database, Where you can store and "lookup"  resources.
+
+What we can store inside Registry Server in vertx?
+
+ Resources:
+
+Types of Resources(Services):
+.............................
+The services you can register into registry
+
+HTTP Endpoint -HttpEndPoint.createRecord
+Event Bus Service -EventBus.createRecord
+Message Source
+JDBC Data Source
+Redis Data Source
+MongoDb Data Source
+
+Shared Data / Resource:
+
+ In vertx you can store resources in centrialized place, and you share it across application.
+
+eg: you have one jdbc connection, where you will store connection object, thats where shared data comes into picture.
+
+
+Shared data architecture is "Service Discovery and Registry"
+
+
+Implementation:
+
+What you need?
+
+1.Registry server- where you can store all shared resources(httpendpoint,jdbcconnection,eventbus...)
+
+Vertx provides default built in Registry Server:
+...............................................
+-Key value data structure;
+  Map- implementations.
+
+Popular Registry Servers:
+.........................
+1.eureka server
+2.Apache zoo keeper
+3.Consule
+4.Kubernetes
+5.Redis
+etc....
+
+Core concepts:
+
+1.Record - bag - inside bag you can store any resource-store that record into registry server.
+
+Vertx Resource Storage:
+
+Vertx resources are stored in side registry by packing resouces into a object called "Record".
+
+
+Resource--->Record 
+
+Service Discovery Objects:
+
+1.Record
+2.Service
+3.ServiceDiscovery
+
+Vertx has ServiceDiscovery Instance, which helps to publish / un publish ,and discover
+services 
+
+
+Publishing HTTP End Point into Registry, where other verticles can consume that.
+
+
+Steps: /Flows:
+
+We are going to fetch "WebClient" Reference from the Service Registry.
+
+1.Server which provides data : Rest Service
+
+package com.cts.vertx.microservice.serviceregistry;
+
+import io.vertx.core.AbstractVerticle;
+
+public class HelloRestService extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    super.start();
+    vertx.createHttpServer().requestHandler(request -> {
+      if (request.path().equals("/api/hello")) {
+        request.response().end("<h1>Hello! I am coming via Service Discovery<h1>");
+      }
+    }).listen(3001);
+  }
+}
+
+2.Create WebClient Resource points to the above Rest api , store into Registry server
+
+package com.cts.vertx.microservice.serviceregistry;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.json.JsonObject;
+import io.vertx.servicediscovery.Record;
+import io.vertx.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.ServiceDiscoveryOptions;
+import io.vertx.servicediscovery.types.HttpEndpoint;
+
+public class ServicePublisherVerticle extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    super.start();
+    //Service Discovery Options
+//    ServiceDiscovery.create(vertx)
+//      .registerServiceImporter(new ZookeeperServiceImporter()
+//        , new JsonObject().put("connection", "127.0.0.1:2181"));
+    ServiceDiscoveryOptions discoveryOptions = new ServiceDiscoveryOptions();
+    //enable discovery server : apache zoo keeper
+    discoveryOptions.setBackendConfiguration(new JsonObject()
+      .put("connection", "127.0.0.1:2181")
+      .put("ephemeral", true)
+      .put("guaranteed", true)
+      .put("basePath", "/services/my-backend")
+    );
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx, discoveryOptions);
+
+    //Record Creation,Record type is Resource Type;storing webclient Resource into registry
+    Record httpEndPointRecord = HttpEndpoint.createRecord("myrecord", "localhost", 3001, "/api/hello");
+
+    //publish: add record into zookeeper
+    discovery.publish(httpEndPointRecord, ar -> {
+      if (ar.succeeded()) {
+        System.out.println("Successfully published ..>>>>" + ar.result().toJson());
+      } else {
+        System.out.println(" Not Published " + ar.cause());
+      }
+    });
+
+  }
+}
+
+3.Any Service can discover web Client Resource from the Registry server.
+
+
+package com.cts.vertx.microservice.serviceregistry;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.ServiceDiscoveryOptions;
+import io.vertx.servicediscovery.types.HttpEndpoint;
+
+public class ServiceConsumerVerticle extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    super.start();
+     ServiceDiscoveryOptions discoveryOptions = new ServiceDiscoveryOptions();
+    //enable discovery server : apache zoo keeper
+    discoveryOptions.setBackendConfiguration(new JsonObject()
+      .put("connection", "127.0.0.1:2181")
+      .put("ephemeral", true)
+      .put("guaranteed", true)
+      .put("basePath", "/services/my-backend")
+    );
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx, discoveryOptions);
+
+    vertx.createHttpServer().requestHandler(req -> {
+      HttpEndpoint.getWebClient(discovery, new JsonObject().put("name", "myrecord"), sar -> {
+        // get web client
+        WebClient webClient = sar.result();
+        webClient.get("/api/hello").send(res -> {
+          System.out.println("Response is ready!");
+          req.response().end(res.result().bodyAsString());
+        });
+        req.response().endHandler(ar -> {
+          //remove /release discovery record
+          ServiceDiscovery.releaseServiceObject(discovery, webClient);
+        });
+      });
+
+
+    }).listen(3000, ar -> {
+      System.out.println("Service Consumer Service ");
+    });
+
+
+  }
+}
+
+4.Deployer
+package com.cts.vertx.microservice.serviceregistry;
+
+import io.vertx.core.Vertx;
+
+public class ServiceDiscoveryMainVerticle {
+  public static void main(String[] args) {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new HelloRestService());
+    vertx.deployVerticle(new ServicePublisherVerticle());
+    vertx.deployVerticle(new ServiceConsumerVerticle());
+  }
+}
+
+
+How to test:
+
+http://localhost:3000
+ 
+ ----...................../////////////////////////////////////////////////////////////////
+				Resilence
+.......................................................................................
+
+Vert.x Provides circuit Breaker is an implementation of Circuit Breaker pattern.
+
+It keeps tracks of number of failures and opens the circuit when a threshold is reached.
+optionally fallback is given.
+
+States CB:
+
+1.closed
+   -Application is working well
+2.open
+  -Application is failing
+3.Half Open
+  -Application is recovering from failures
+
+
+if cb in open state
+ What to do? or how to react for failures.
+
+When cb can open?
+
+ if max failures reached
+ if timeout is reached
+  
+
+1.Circuit Breaker Configuration.
+
+CircuitBreaker breaker = CircuitBreaker.create("my-circuit-breaker", vertx,
+    new CircuitBreakerOptions()
+        .setMaxFailures(5) // number of failure before opening the circuit
+        .setTimeout(2000) // consider a failure if the operation does not succeed in time
+        .setFallbackOnFailure(true) // do we call the fallback on failure
+        .setResetTimeout(10000) // time spent in open state before attempting to re-try
+);
+
+// ---
+// Store the circuit breaker in a field and access it as follows
+// ---
+
+breaker.execute(promise -> {
+  // some code executing with the breaker
+  // the code reports failures or success on the given promise.
+  // if this promise is marked as failed, the breaker increased the
+  // number of failures
+}).onComplete(ar -> {
+  // Get the operation result.
+});
+ 
+
+
+code:
+package com.cts.vertx.microservice.cicuitbreaker;
+
+import io.vertx.circuitbreaker.CircuitBreaker;
+import io.vertx.circuitbreaker.CircuitBreakerOptions;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+
+public class CircuitBreakerPatternVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+    super.start();
+    CircuitBreakerOptions options = new CircuitBreakerOptions();
+    options.setMaxFailures(2);// no of failures will be allowed , after that , ciruit will open
+    options.setTimeout(3000); // consider a failure if the operation does not succeed in time
+    options.setFallbackOnFailure(true); // if any failure, should i handle fallback or not
+    options.setResetTimeout(5000); // time spent in open state before attempting to retry.
+
+    CircuitBreaker circuitBreaker = CircuitBreaker.create("my-circuit-breaker", vertx, options);
+
+    vertx.createHttpServer().requestHandler(req -> {
+      circuitBreaker.executeWithFallback(future -> {
+        //risky code
+        WebClient client = WebClient.create(vertx);
+        client.get(3000, "localhost", "/").send(ar -> {
+          // Obtain response
+          HttpResponse<Buffer> response = ar.result();
+          if (response.statusCode() != 200) {
+            future.fail("HTTP error");
+          } else {
+            future.complete(response.bodyAsString());
+          }
+        });
+      }, v -> {
+        // Executed when the circuit is opened
+        return "Hello, I am fallback";
+      }).onComplete(ar -> {
+        // Do something with the result
+        if (ar.succeeded()) {
+          //System.out.println(ar.result());
+          req.response().end(ar.result());
+        } else {
+          System.out.println(ar.cause());
+
+        }
+      });
+    }).listen(8080);
+
+  }
+}
+
+package com.cts.vertx.microservice.cicuitbreaker;
+
+import io.vertx.core.AbstractVerticle;
+
+public class SomeService extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    super.start();
+    vertx.createHttpServer().requestHandler(r -> {
+      vertx.setTimer(2000, ar -> {
+        r.response().end("I am fine but delayed!");
+      });
+    }).listen(3000);
+  }
+}
+
+package com.cts.vertx.microservice.cicuitbreaker;
+
+import io.vertx.core.Vertx;
+
+public class CBDeployer {
+  public static void main(String[] args) {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new SomeService());
+    vertx.deployVerticle(new CircuitBreakerPatternVerticle());
+  }
+}
+
+
+Testing :
+
+just disable some service and test
+
+also increase and decrease timer in both verticles and test
+
+
+
